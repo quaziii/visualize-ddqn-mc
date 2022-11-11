@@ -1,7 +1,7 @@
 from PyRlEnvs.domains.MountainCar import GymMountainCar as Env
 from PyExpUtils.utils.Collector import Collector
-from experiment.ExperimentModel import ExperimentModel
-from problems.BaseProblem import BaseProblem
+from ExperimentModel import ExperimentModel
+from BaseProblem import BaseProblem
 
 class MountainCar(BaseProblem):
     def __init__(self, exp: ExperimentModel, idx: int, collector: Collector):

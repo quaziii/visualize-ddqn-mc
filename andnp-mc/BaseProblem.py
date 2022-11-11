@@ -1,10 +1,29 @@
+import sys
+import json
+from PyExpUtils.models.ExperimentDescription import ExperimentDescription
 from typing import Optional
 from PyExpUtils.utils.Collector import Collector
 from RlGlue.environment import BaseEnvironment
 
-from experiment.ExperimentModel import ExperimentModel
-from agents.BaseAgent import BaseAgent
+from BaseAgent import BaseAgent
 from agents.registry import getAgent
+
+class ExperimentModel(ExperimentDescription):
+    def __init__(self, d, path):
+        super().__init__(d, path)
+        self.agent = d['agent']
+        self.problem = d['problem']
+
+        self.episode_cutoff = d.get('episode_cutoff', -1)
+        self.total_steps = d.get('total_steps')
+
+def load(path=None):
+    path = path if path is not None else sys.argv[1]
+    with open(path, 'r') as f:
+        d = json.load(f)
+
+    exp = ExperimentModel(d, path)
+    return exp
 
 
 class BaseProblem:
@@ -35,6 +54,8 @@ class BaseProblem:
 
         return self.env
 
+############################################################################
+######################Need to fix this with our agent#######################
     def getAgent(self):
         if self.gamma is not None:
             self.params['gamma'] = self.gamma
