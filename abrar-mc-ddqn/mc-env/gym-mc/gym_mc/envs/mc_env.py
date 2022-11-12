@@ -113,7 +113,7 @@ class McEnv(gym.Env):
 
         self.state = (position, velocity)
 
-        print('state: ', self.state)
+        # print('state: ', self.state)
         return np.array(self.state), reward, done, {}
 
     def reset(self):
