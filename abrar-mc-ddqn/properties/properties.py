@@ -44,6 +44,18 @@ class MeasureProperties:
 
         return 1 - (orth_sum * (2 / (n * (n + 1))))
 
+    def sparsity(self):
+        sparse_sum = 0
+        n = self.n
+        for i in range(n):
+            d = self.phis[i, :].size
+            for j in range(d):
+                if (np.dot(self.phis[i, :], self.phis[j, :]) == 0):
+                    sparse_sum += 1 / (d * n)
+
+        return sparse_sum
+
+
 
 
 
