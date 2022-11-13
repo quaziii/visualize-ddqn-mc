@@ -6,6 +6,7 @@ class MeasureProperties:
         states = [] # list of all states
         phis = [] # list of all representations of all states
         qs = [] # list of shape (n_s, n_a)
+        n = len(self.transitions)
 
 
 
@@ -15,7 +16,7 @@ class MeasureProperties:
     def complexity_reduction(self):
 
         run_sum = 0
-        n = len(self.transitions)
+        n = self.n
         # iterate over all pairs of transitions
         for i in range(n):
             for j in range(n):
@@ -29,6 +30,20 @@ class MeasureProperties:
         # TODO: calculate L_max
 
         return 1 - (run_sum * (2 / (n * (n + 1))))
+
+    def orthogonality(self):
+        orth_sum = 0
+        n = self.n
+        for i in range(n):
+            for j in range(n):
+                if i < j:
+                    magn_phi_i = np.linalg.norm(self.phis[i, :])
+                    magn_phi_j = np.linalg.norm(self.phis[j, :])
+                    orth = np.dot(self.phis[i, :], self.phis[j, :]) / (magn_phi_j * magn_phi_j)
+                    orth_sum += orth
+
+        return 1 - (orth_sum * (2 / (n * (n + 1))))
+
 
 
 
