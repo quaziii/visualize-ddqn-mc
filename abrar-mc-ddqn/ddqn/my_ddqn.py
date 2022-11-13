@@ -76,8 +76,7 @@ class ConvDQN(nn.Module):
         super(ConvDQN, self).__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
-        self.fc_input_dim = self.feature_size()
-        
+
         self.conv = nn.Sequential(
             nn.Conv2d(self.input_dim[0], 32, kernel_size=8, stride=4),
             nn.ReLU(),
@@ -86,6 +85,9 @@ class ConvDQN(nn.Module):
             nn.Conv2d(64, 64, kernel_size=3, stride=1),
             nn.ReLU()
         )
+
+        # self.fc_input_dim = self.feature_size()
+        self.fc_input_dim = 512
 
         self.fc = nn.Sequential(
             nn.Linear(self.fc_input_dim, 128),
@@ -96,13 +98,13 @@ class ConvDQN(nn.Module):
         )
 
     def forward(self, state):
-        features = self.conv_net(state)
+        features = self.conv(state)
         features = features.view(features.size(0), -1)
         qvals = self.fc(features)
         return qvals
 
     def feature_size(self):
-        return self.conv_net(autograd.Variable(torch.zeros(1, *self.input_dim))).view(1, -1).size(1)
+        return self.conv(autograd.Variable(torch.zeros(1, *self.input_dim))).view(1, -1).size(1)
 
 
 class DQN(nn.Module):
@@ -143,7 +145,7 @@ class DQNAgent:
         else:
             self.model = DQN(env.observation_space.shape, env.action_space.n).to(self.device)
             self.target_model = DQN(env.observation_space.shape, env.action_space.n).to(self.device)
-        
+
         # hard copy model parameters to target model parameters
         for target_param, param in zip(self.model.parameters(), self.target_model.parameters()):
             target_param.data.copy_(param)
@@ -161,7 +163,7 @@ class DQNAgent:
 
         return action
 
-    def compute_loss(self, batch):     
+    def compute_loss(self, batch):   
         states, actions, rewards, next_states, dones = batch
         states = torch.FloatTensor(np.array(states)).to(self.device)
         actions = torch.LongTensor(actions).to(self.device)
