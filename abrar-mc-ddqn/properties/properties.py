@@ -31,9 +31,34 @@ class MeasureProperties:
 
         return 1 - (run_sum * (2 / (n * (n + 1))))
 
+    def diversity(self):
+        diverse_sum = 0
+        n = self.n
+        arr_d_v = np.zeros((n, n))
+        arr_d_s = np.zeros((n, n))
+
+        for i in range(n):
+            for j in range(n):
+                d_v = abs(np.max(self.phis[i, :]) - np.max(self.phis[j, :]))
+                d_s = np.linalg.norm(self.phis[i, :], self.phis[j, :])
+                arr_d_v[i][j] = d_v
+                arr_d_s[i][j] = d_s
+        max_d_v = np.max(arr_d_v)
+        max_d_s = np.max(arr_d_s)
+
+        for i in range(n):
+            for j in range(n):
+                ratio = (d_v / max_d_v) / (d_s / (max_d_s + 0.01))
+                diverse = ratio if ratio < 1 else 1
+                diverse_sum += diverse
+
+        return 1 - (1/(n*n)) * diverse_sum
+
+
     def orthogonality(self):
         orth_sum = 0
         n = self.n
+
         for i in range(n):
             for j in range(n):
                 if i < j:
@@ -47,6 +72,7 @@ class MeasureProperties:
     def sparsity(self):
         sparse_sum = 0
         n = self.n
+
         for i in range(n):
             d = self.phis[i, :].size
             for j in range(d):
