@@ -1,13 +1,74 @@
 import numpy as np
 
+import gym
+
+import random
+
+import torch
+
+
 
 class MeasureProperties:
-    def __init__(self) -> None:
-        transitions = []  # store 1000 transitions
-        states = []  # list of all states
-        phis = []  # list of all representations of all states
-        qs = []  # list of shape (n_s, n_a)
-        n = len(self.transitions)
+    def __init__(self, n, representation_size, n_states, n_actions) -> None:
+        self.transitions: list(Transition) = [] # store 1000 transitions
+        # self.states = [] 
+        self.states = np.zeros((n,)) # list of all states
+        self.phis = np.zeros((n, representation_size)) # list of all representations of all states
+        # self.phis = [] 
+        self.qs = np.zeros((n, n_actions)) # list of shape (n_s, n_a)
+        # self.qs = [] 
+        self.n = n
+
+        pass
+
+    def initialize_data(self, trained_model):
+        # populate transitions list
+        env = gym.make('gym_mc:mc-v0')
+        state = env.reset()
+        # state is an np array
+
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        if torch.backends.mps.is_available():
+            self.device = "mps"
+            self.device = "cpu"
+
+        
+
+
+        # run random policy for n episodes
+        for _ in range(self.n):
+            done = False
+            while not done:
+
+                action = env.action_space.sample()
+
+                next_state, reward, done, info = env.step(action)
+                transition = Transition(state, action, next_state, reward)
+                state = next_state
+                self.transitions.append(transition)
+
+        
+        # randomly sample n transitions
+
+        self.transitions = random.sample(self.transitions, self.n)
+
+
+
+
+        for i, transition in enumerate(self.transitions):
+
+            state = torch.FloatTensor(np.array(transition.state)).to(self.device)
+            self.phis[i] = trained_model.get_representation(state).detach()
+            self.qs[i] = trained_model.forward(state).detach()
+            # self.states[i] = transition.state
+
+        # self.states = np.array(self.states)
+        # self.phis = np.array(self.phis)
+        # self.qs = np.array(self.qs)
+
+        print(self.phis.shape)
+
 
         pass
 
@@ -92,10 +153,10 @@ class MeasureProperties:
 
 
 class Transition:
-    def __init__(self) -> None:
-        self.state = None
-        self.action = None
-        self.next_state = None
-        self.reward = None
+    def __init__(self, state, action, next_state, reward) -> None:
+        self.state = state
+        self.action = action
+        self.next_state = next_state
+        self.reward = reward
 
         pass

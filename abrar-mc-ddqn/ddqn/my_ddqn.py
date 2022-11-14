@@ -8,6 +8,10 @@ import gym
 import random
 from collections import deque
 
+from ddqn.model import ConvDQN, DQN
+
+from properties.properties import MeasureProperties
+
 # taken from https://github.com/cyoon1729/deep-Q-networks/blob/master/doubleDQN/ddqn.py
 
 
@@ -70,62 +74,6 @@ def mini_batch_train(env, agent, max_episodes, max_steps, batch_size):
     return episode_rewards
 
 
-class ConvDQN(nn.Module):
-    
-    def __init__(self, input_dim, output_dim):
-        super(ConvDQN, self).__init__()
-        self.input_dim = input_dim
-        self.output_dim = output_dim
-
-        self.conv = nn.Sequential(
-            nn.Conv2d(self.input_dim[0], 32, kernel_size=8, stride=4),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2),
-            nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1),
-            nn.ReLU()
-        )
-
-        # self.fc_input_dim = self.feature_size()
-        self.fc_input_dim = 512
-
-        self.fc = nn.Sequential(
-            nn.Linear(self.fc_input_dim, 128),
-            nn.ReLU(),
-            nn.Linear(128, 256),
-            nn.ReLU(),
-            nn.Linear(256, self.output_dim)
-        )
-
-    def forward(self, state):
-        features = self.conv(state)
-        features = features.view(features.size(0), -1)
-        qvals = self.fc(features)
-        return qvals
-
-    def feature_size(self):
-        return self.conv(autograd.Variable(torch.zeros(1, *self.input_dim))).view(1, -1).size(1)
-
-
-class DQN(nn.Module):
-    
-    def __init__(self, input_dim, output_dim):
-        super(DQN, self).__init__()
-        self.input_dim = input_dim
-        self.output_dim = output_dim
-        
-        self.fc = nn.Sequential(
-            nn.Linear(self.input_dim[0], 128),
-            nn.ReLU(),
-            nn.Linear(128, 256),
-            nn.ReLU(),
-            nn.Linear(256, self.output_dim)
-        )
-
-    def forward(self, state):
-        qvals = self.fc(state)
-        return qvals
-
 
 class DQNAgent:
 
@@ -138,9 +86,14 @@ class DQNAgent:
 	
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+        if torch.backends.mps.is_available():
+            self.device = "mps"
+            self.device = "cpu"
+
         self.use_conv = use_conv
         if self.use_conv:
-            self.model = ConvDQN(env.observation_space.shape, env.action_space.n).to(self.device)
+            self.model = ConvDQN
+            (env.observation_space.shape, env.action_space.n).to(self.device)
             self.target_model = ConvDQN(env.observation_space.shape, env.action_space.n).to(self.device)
         else:
             self.model = DQN(env.observation_space.shape, env.action_space.n).to(self.device)
@@ -197,13 +150,3 @@ class DQNAgent:
         # target network update
         for target_param, param in zip(self.target_model.parameters(), self.model.parameters()):
             target_param.data.copy_(self.tau * param + (1 - self.tau) * target_param)
-
-
-env_id = "gym_mc:mc-v0"
-MAX_EPISODES = 1000
-MAX_STEPS = 1000
-BATCH_SIZE = 32
-
-env = gym.make(env_id)
-agent = DQNAgent(env, use_conv=False)
-episode_rewards = mini_batch_train(env, agent, MAX_EPISODES, MAX_STEPS, BATCH_SIZE)
