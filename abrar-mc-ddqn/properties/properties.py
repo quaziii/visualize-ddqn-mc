@@ -32,7 +32,7 @@ class MeasureProperties:
         n = self.n
 
         for i in range(n):
-            _ = np.random.uniform(1, n, self.phis[j].size)
+            _ = np.random.uniform(1, n, self.phis[j].size).astype(int)
             for j in _:
                 d_s = np.linalg.norm(self.phis[i] - self.phis[j])
                 d_s_sum += d_s
