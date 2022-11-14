@@ -87,6 +87,13 @@ class MeasureProperties:
 
         return 1 - (run_sum * (2 / (n * (n + 1))))
 
+
+    def complexity_reduction(L):
+        L_max = max(L)
+        complexity_reduction_values = [1-(L_rep/L_max) for L_rep in L]
+        return complexity_reduction_values
+
+
     def awareness(self):
         d_s_sum = 0
         sum_of_diff = 0
