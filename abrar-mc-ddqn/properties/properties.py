@@ -11,7 +11,7 @@ class MeasureProperties:
 
         pass
 
-    def complexity_reduction(self):
+    def get_L_rep(self):
 
         run_sum = 0
         n = self.n
@@ -23,8 +23,6 @@ class MeasureProperties:
                     d_sij = np.sqrt(np.sum(np.square(self.phis[i] - self.phis[j])))
                     ratio = d_qij / d_sij
                     run_sum += ratio
-
-        # TODO: calculate L_max
 
         return 1 - (run_sum * (2 / (n * (n + 1))))
 
