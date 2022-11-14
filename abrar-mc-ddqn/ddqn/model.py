@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.autograd as autograd
 
+torch.manual_seed(100)
+
 import numpy as np
 import gym
 
@@ -60,6 +62,12 @@ class DQN(nn.Module):
             nn.Linear(256, self.output_dim)
         )
 
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_normal_(m.weight)
+                nn.init.constant_(m.bias, 0.01)
+
+
     def forward(self, state):
         qvals = self.fc(state)
         return qvals
@@ -73,7 +81,7 @@ class DQN(nn.Module):
         )
 
         y = fc(state)
-        print('shapeee ' , y.shape)
+        # print('shapeee ' , y.shape)
         return fc(state)
 
 
