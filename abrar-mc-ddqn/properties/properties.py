@@ -99,8 +99,8 @@ class MeasureProperties:
         sum_of_diff = 0
         n = self.n
 
-        for i in range(n):
-            _ = np.random.uniform(1, n, self.phis[j].size).astype(int)
+        for i in range(n-1):
+            _ = np.random.uniform(1, n, self.phis[i].size).astype(int)
             for j in _:
                 d_s = np.linalg.norm(self.phis[i] - self.phis[j])
                 d_s_sum += d_s
@@ -118,7 +118,7 @@ class MeasureProperties:
         for i in range(n):
             for j in range(n):
                 d_v = abs(np.max(self.phis[i]) - np.max(self.phis[j]))
-                d_s = np.linalg.norm(self.phis[i], self.phis[j])
+                d_s = np.linalg.norm(self.phis[i] - self.phis[j])
                 arr_d_v[i][j] = d_v
                 arr_d_s[i][j] = d_s
         max_d_v = np.max(arr_d_v)
@@ -126,7 +126,7 @@ class MeasureProperties:
 
         for i in range(n):
             for j in range(n):
-                ratio = (d_v / max_d_v) / (d_s / (max_d_s + 0.01))
+                ratio = (arr_d_v[i][j] / max_d_v) / (arr_d_s[i][j] / (max_d_s + 0.01))
                 diverse = ratio if ratio < 1 else 1
                 diverse_sum += diverse
 
@@ -153,7 +153,7 @@ class MeasureProperties:
         for i in range(n):
             d = self.phis[i].size
             for j in range(d):
-                if (np.dot(self.phis[i], self.phis[j]) == 0):
+                if (self.phis[i][j] == 0):
                     sparse_sum += 1 / (d * n)
 
         return sparse_sum

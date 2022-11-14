@@ -39,9 +39,9 @@ properties.initialize_data(agent.model)
 
 print('complexity reduction: ', properties.get_L_rep())
 
-print('diversity: ', properties.diversity())
-print('diversity: ', properties.sparsity())
-print('diversity: ', properties.orthogonality())
+print('awareness: ', properties.awareness())
+print('orthogonality: ', properties.orthogonality())
+print('sparsity: ', properties.sparsity())
 print('diversity: ', properties.diversity())
 
 
