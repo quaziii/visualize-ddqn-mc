@@ -129,7 +129,7 @@ class MeasureProperties:
 
         for i in range(n):
             for j in range(n):
-                ratio = (arr_d_v[i][j] / max_d_v) / (arr_d_s[i][j] / (max_d_s + 0.01))
+                ratio = (arr_d_v[i][j] / max_d_v) / ((arr_d_s[i][j] / max_d_s) + 0.01)
                 diverse = ratio if ratio < 1 else 1
                 diverse_sum += diverse
 
@@ -147,7 +147,7 @@ class MeasureProperties:
                     orth = np.dot(self.phis[i], self.phis[j]) / (magn_phi_j * magn_phi_j)
                     orth_sum += orth
 
-        return 1 - (orth_sum * (2 / (n * (n + 1))))
+        return 1 - (orth_sum * (2 / (n * (n - 1))))
 
     def sparsity(self):
         sparse_sum = 0
