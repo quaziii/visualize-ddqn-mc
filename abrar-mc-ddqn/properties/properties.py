@@ -14,6 +14,7 @@ class MeasureProperties:
         # self.states = [] 
         self.states = np.zeros((n,)) # list of all states
         self.phis = np.zeros((n, representation_size)) # list of all representations of all states
+        self.phis_next = np.zeros((n, representation_size))
         # self.phis = [] 
         self.qs = np.zeros((n, n_actions)) # list of shape (n_s, n_a)
         # self.qs = [] 
@@ -59,7 +60,9 @@ class MeasureProperties:
         for i, transition in enumerate(self.transitions):
 
             state = torch.FloatTensor(np.array(transition.state)).to(self.device)
+            next_state = torch.FloatTensor(np.array(transition.next_state)).to(self.device)
             self.phis[i] = trained_model.get_representation(state).detach()
+            self.phis_next[i] = trained_model.get_representation(next_state).detach()
             self.qs[i] = trained_model.forward(state).detach()
             # self.states[i] = transition.state
 
@@ -104,7 +107,7 @@ class MeasureProperties:
             for j in _:
                 d_s = np.linalg.norm(self.phis[i] - self.phis[j])
                 d_s_sum += d_s
-            diff = np.linalg.norm(self.phis[i] - self.phis[i + 1])
+            diff = np.linalg.norm(self.phis[i] - self.phis_next[i])
             sum_of_diff += diff
 
         return (d_s_sum - sum_of_diff) / d_s_sum
