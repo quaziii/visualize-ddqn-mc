@@ -52,14 +52,14 @@ class DQN(nn.Module):
         super(DQN, self).__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
-        self.representation_size = 256
+        self.representation_size = 128
+
+        # print('self.input dim ', self.input_dim[0])
         
         self.fc = nn.Sequential(
-            nn.Linear(self.input_dim[0], 128),
+            nn.Linear(self.input_dim[0], self.representation_size),
             nn.ReLU(),
-            nn.Linear(128, 256),
-            nn.ReLU(),
-            nn.Linear(256, self.output_dim)
+            nn.Linear(self.representation_size, self.output_dim)
         )
 
         for m in self.modules():
@@ -74,10 +74,8 @@ class DQN(nn.Module):
 
     def get_representation(self, state):
         fc = nn.Sequential(
-            nn.Linear(self.input_dim[0], 128),
+            nn.Linear(self.input_dim[0], self.representation_size),
             nn.ReLU(),
-            nn.Linear(128, 256),
-            nn.ReLU()
         )
 
         y = fc(state)

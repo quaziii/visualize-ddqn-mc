@@ -83,10 +83,35 @@ class DQNAgent:
 
         self.optimizer = torch.optim.Adam(self.model.parameters())
         
-        
+    def normalize_state(self, state):
+
+        # print('state shape ', state)
+        normalized_state = state
+        normalized_state = (normalized_state - np.array([self.env.min_position, 0])) / np.array([self.env.max_position - self.env.min_position, self.env.max_speed])
+        # normalized_state[0] = state[0] - self.env.min_position / (self.env.max_position - self.env.min_position)
+        # normalized_state[1] = state[1] / (self.env.max_speed)
+
+        normalized_state = normalized_state.to(state.dtype)
+
+
+
+        # print('norm shape ', normalized_state)
+        return normalized_state
     def get_action(self, state, eps=0.20):
         state = torch.FloatTensor(state).float().unsqueeze(0).to(self.device)
-        qvals = self.model.forward(state)
+
+
+
+        # normalize state features
+        # state shape: (1,2)
+        # state: (position, velocity)
+
+        # print('state shape ', state.shape)
+        normalized_state = self.normalize_state(state)
+
+        # print('normsa shape ', normalized_state.shape)
+
+        qvals = self.model.forward(normalized_state)
         action = np.argmax(qvals.cpu().detach().numpy())
         
         if(np.random.randn() < eps):
@@ -106,9 +131,13 @@ class DQNAgent:
         actions = actions.view(actions.size(0), 1)
         dones = dones.view(dones.size(0), 1).to(self.device)
 
+
+        # states shape: (n_buffer, 2)
         # compute loss
-        curr_Q = self.model.forward(states).gather(1, actions)
-        next_Q = self.target_model.forward(next_states)
+        normalized_states = self.normalize_state(states)
+        normalized_next_states = self.normalize_state(next_states)
+        curr_Q = self.model.forward(normalized_states).gather(1, actions)
+        next_Q = self.target_model.forward(normalized_next_states)
         max_next_Q = torch.max(next_Q, 1)[0]
         max_next_Q = max_next_Q.view(max_next_Q.size(0), 1)
         expected_Q = rewards + (1 - dones) * self.gamma * max_next_Q

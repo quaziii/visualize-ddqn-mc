@@ -22,7 +22,7 @@ class MeasureProperties:
 
         pass
 
-    def initialize_data(self, trained_model):
+    def initialize_data(self, agent):
         # populate transitions list
         env = gym.make('gym_mc:mc-v0')
         state = env.reset()
