@@ -137,7 +137,6 @@ else:
         print('sparsity_list_avg: ', sparsity_list_avg)
         print('diversity_list_avg: ', diversity_list_avg)
 
-        del agent
 
     torch.save(agent.model.state_dict(), 'saved_models/model.pt')
     torch.save(agent.target_model.state_dict(), 'saved_models/target_model.pt')

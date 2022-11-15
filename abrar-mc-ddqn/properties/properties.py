@@ -61,9 +61,9 @@ class MeasureProperties:
 
             state = torch.FloatTensor(np.array(transition.state)).to(self.device)
             next_state = torch.FloatTensor(np.array(transition.next_state)).to(self.device)
-            self.phis[i] = trained_model.get_representation(state).detach()
-            self.phis_next[i] = trained_model.get_representation(next_state).detach()
-            self.qs[i] = trained_model.forward(state).detach()
+            self.phis[i] = agent.model.get_representation(state).detach()
+            self.phis_next[i] = agent.model.get_representation(next_state).detach()
+            self.qs[i] = agent.model.forward(state).detach()
             # self.states[i] = transition.state
 
         # self.states = np.array(self.states)
