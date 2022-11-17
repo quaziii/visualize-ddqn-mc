@@ -5,8 +5,8 @@ env.reset()
 
 
 # from ddqn.agent.ddqn_agent import Agent
-USE_OPTIMAL_POLICY = True
-USE_RANDOM_POLICY = False
+USE_OPTIMAL_POLICY = False
+USE_RANDOM_POLICY = True
 
 
 BOTTOM = -0.5251529683 # found by finding position where velocity of car is maximum, when only action is no_accelerate. WILL CHANGE WITH MC PARAMETERS.
@@ -18,7 +18,7 @@ BOTTOM = -0.5251529683 # found by finding position where velocity of car is maxi
 next_action = 2
 
 total_reward = 0
-for _ in range(3000):
+for _ in range(500):
     env.render()
 
     if USE_RANDOM_POLICY:

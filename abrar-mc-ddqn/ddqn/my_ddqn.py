@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.autograd as autograd
 
-torch.manual_seed(100)
+# torch.manual_seed(100)
 
 
 
@@ -82,8 +82,13 @@ class DQNAgent:
             target_param.data.copy_(param)
 
         self.optimizer = torch.optim.Adam(self.model.parameters())
+
+        # self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.99)
+        # self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, [200, 400, 600, 800] , gamma=0.1, verbose=True)
+        
         
     def normalize_state(self, state):
+        return state
 
         # print('state shape ', state)
         normalized_state = state
@@ -93,11 +98,13 @@ class DQNAgent:
 
         normalized_state = normalized_state.to(state.dtype)
 
+        normalized_state = state
+
 
 
         # print('norm shape ', normalized_state)
         return normalized_state
-    def get_action(self, state, eps=0.20):
+    def get_action(self, state, eps=-1.5):
         state = torch.FloatTensor(state).float().unsqueeze(0).to(self.device)
 
 
@@ -115,6 +122,7 @@ class DQNAgent:
         action = np.argmax(qvals.cpu().detach().numpy())
         
         if(np.random.randn() < eps):
+            # print('take rand')
             return self.env.action_space.sample()
 
         return action
@@ -152,7 +160,11 @@ class DQNAgent:
 
         self.optimizer.zero_grad()
         loss.backward()
+        # for p in self.model.parameters():
+        #     print(p.grad.norm())
         self.optimizer.step()
+
+        # self.scheduler.step()
         
         # target network update
         for target_param, param in zip(self.target_model.parameters(), self.model.parameters()):

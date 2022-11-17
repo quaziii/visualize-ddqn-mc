@@ -83,12 +83,12 @@ class MeasureProperties:
         for i in range(n):
             for j in range(n):
                 if i < j:
-                    d_qij = max(self.qs[i, :] - self.qs[j, :])
+                    d_qij = np.max(np.abs(self.qs[i, :] - self.qs[j, :]))
                     d_sij = np.sqrt(np.sum(np.square(self.phis[i] - self.phis[j])))
                     ratio = d_qij / d_sij
                     run_sum += ratio
 
-        return 1 - (run_sum * (2 / (n * (n + 1))))
+        return (run_sum * (2 / (n * (n + 1))))
 
 
     def complexity_reduction(L):
@@ -102,13 +102,17 @@ class MeasureProperties:
         sum_of_diff = 0
         n = self.n
 
-        for i in range(n-1):
-            _ = np.random.uniform(1, n, self.phis[i].size).astype(int)
+        for i in range(n):
+            # _ = np.random.uniform(1, n, self.phis[i].size).astype(int)
+            _ = np.random.uniform(0, n, 1).astype(int)
             for j in _:
-                d_s = np.linalg.norm(self.phis[i] - self.phis[j])
+                d_s = np.linalg.norm(self.phis[i] - self.phis[j], ord=1)
                 d_s_sum += d_s
-            diff = np.linalg.norm(self.phis[i] - self.phis_next[i])
+            diff = np.linalg.norm(self.phis[i] - self.phis_next[i], ord=1)
             sum_of_diff += diff
+
+        print('sum of diff: ', sum_of_diff)
+        print('ds sum ', d_s_sum)
 
         return (d_s_sum - sum_of_diff) / d_s_sum
 
@@ -144,7 +148,7 @@ class MeasureProperties:
                 if i < j:
                     magn_phi_i = np.linalg.norm(self.phis[i])
                     magn_phi_j = np.linalg.norm(self.phis[j])
-                    orth = np.dot(self.phis[i], self.phis[j]) / (magn_phi_j * magn_phi_j)
+                    orth = np.dot(self.phis[i], self.phis[j]) / (magn_phi_i * magn_phi_j)
                     orth_sum += orth
 
         return 1 - (orth_sum * (2 / (n * (n - 1))))

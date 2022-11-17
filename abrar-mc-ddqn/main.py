@@ -4,7 +4,7 @@ from ddqn.my_ddqn import DQNAgent
 from properties.properties import MeasureProperties
 
 import torch
-torch.manual_seed(100)
+# torch.manual_seed(100)
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,14 +12,14 @@ import numpy as np
 
 
 env_id = "gym_mc:mc-v0"
-MAX_EPISODES = 200
+MAX_EPISODES = 300
 MAX_STEPS = 1000
-BATCH_SIZE = 64
-N = 100
+BATCH_SIZE = 32
+N = 500
 
 LOAD_FROM_FILE = False
 
-N_RUNS = 1
+N_RUNS = 3
 
 
 
@@ -64,6 +64,8 @@ def mini_batch_train(env, agent, max_episodes, max_steps, batch_size, calculate_
             sparsity_list.append(properties.sparsity())
             diversity_list.append(properties.diversity())
             rewards_list.append(episode_reward)
+    # reducing learning rate every episode
+    # agent.scheduler.step()
 
     
     complexity_reductions = MeasureProperties.complexity_reduction(L_rep_list)
@@ -83,7 +85,9 @@ def mini_batch_train(env, agent, max_episodes, max_steps, batch_size, calculate_
 
 env = gym.make(env_id)
 # agent = DQNAgent(env, use_conv=False, gamma=1, tau=0.01, learning_rate=0.005)
-milestones = [1, 20, 50, 100, 150, 190]
+# milestones = [1, 20, 50, 100, 150, 190, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900]
+
+milestones = np.arange(0, MAX_EPISODES-1, 20)
 
 episode_rewards_avg = np.zeros((len(milestones),))
 complexity_reductions_avg = np.zeros((len(milestones),))
@@ -104,11 +108,6 @@ else:
         
         agent = DQNAgent(env, use_conv=False, gamma=1, tau=0.01, learning_rate=0.005)
 
-
-
-
-    
-    
         episode_rewards, complexity_reductions, awareness_list, orthogonality_list, sparsity_list, diversity_list = mini_batch_train(env, agent, MAX_EPISODES, MAX_STEPS, BATCH_SIZE, calculate_properties=True, milestones=milestones)
 
         print('episode_rewards', episode_rewards)
@@ -147,14 +146,25 @@ else:
     orthogonality_list_avg = orthogonality_list_avg / N_RUNS
     sparsity_list_avg = sparsity_list_avg / N_RUNS
     diversity_list_avg = diversity_list_avg / N_RUNS
-
-
+    fig = plt.figure(figsize=(6, 4))
+    plt.subplot(321)
     plt.plot(milestones, episode_rewards_avg, label="Rewards")
+    plt.ylabel('Rewards')
+    plt.subplot(322)
     plt.plot(milestones, complexity_reductions_avg, label="Complexity reduction")
+    plt.ylabel('Complexity Reduction')
+    plt.subplot(323)
     plt.plot(milestones, awareness_list_avg, label="Awareness")
+    plt.ylabel('Awareness')
+    plt.subplot(324)
     plt.plot(milestones, orthogonality_list_avg, label="Orthogonality")
+    plt.ylabel('Orthogonality')
+    plt.subplot(325)
     plt.plot(milestones, sparsity_list_avg, label="Sparsity")
+    plt.ylabel('Sparsity')
+    plt.subplot(326)
     plt.plot(milestones, diversity_list_avg, label="Diversity")
+    plt.ylabel('Diversity')
 
     print('episode rewards: ', episode_rewards_avg)
     print('complexity_reductions_avg: ', complexity_reductions_avg)
@@ -164,7 +174,7 @@ else:
     print('diversity_list_avg: ', diversity_list_avg)
 
 
-    plt.legend()
+    # plt.legend()
 
     plt.show()
 
