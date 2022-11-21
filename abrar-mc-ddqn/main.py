@@ -12,21 +12,21 @@ import numpy as np
 
 
 env_id = "gym_mc:mc-v0"
-MAX_EPISODES = 300
+MAX_EPISODES = 500
 MAX_STEPS = 1000
-BATCH_SIZE = 32
+BATCH_SIZE = 64
 N = 500
+MEASUREMENT_INTERVAL = 10
+N_RUNS = 5
 
 LOAD_FROM_FILE = False
-
-N_RUNS = 3
 
 
 
 
 def mini_batch_train(env, agent, max_episodes, max_steps, batch_size, calculate_properties=False, milestones = []):
     episode_rewards = []
-    properties = MeasureProperties(N, agent.model.representation_size, env.observation_space.shape[0], env.action_space.n)
+    properties = MeasureProperties(N, agent.model.representation_size, env.observation_space.shape[0], env.action_space.n, env)
 
     L_rep_list = []
     awareness_list = []
@@ -87,14 +87,25 @@ env = gym.make(env_id)
 # agent = DQNAgent(env, use_conv=False, gamma=1, tau=0.01, learning_rate=0.005)
 # milestones = [1, 20, 50, 100, 150, 190, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900]
 
-milestones = np.arange(0, MAX_EPISODES-1, 20)
+milestones = np.arange(0, MAX_EPISODES-1, MEASUREMENT_INTERVAL)
 
+
+# averages
 episode_rewards_avg = np.zeros((len(milestones),))
 complexity_reductions_avg = np.zeros((len(milestones),))
 awareness_list_avg = np.zeros((len(milestones),))
 orthogonality_list_avg = np.zeros((len(milestones),))
 sparsity_list_avg = np.zeros((len(milestones),))
 diversity_list_avg = np.zeros((len(milestones),))
+
+
+# collections
+episode_rewards_collection = np.zeros((N_RUNS, len(milestones),))
+complexity_reductions_collection = np.zeros((N_RUNS, len(milestones),))
+awareness_list_collection = np.zeros((N_RUNS, len(milestones),))
+orthogonality_list_collection = np.zeros((N_RUNS, len(milestones),))
+sparsity_list_collection = np.zeros((N_RUNS, len(milestones),))
+diversity_list_collection = np.zeros((N_RUNS, len(milestones),))
 
 
 if LOAD_FROM_FILE:
@@ -104,23 +115,25 @@ if LOAD_FROM_FILE:
 else:
     
 
-    for _ in range(N_RUNS):
+    for run in range(N_RUNS):
         
         agent = DQNAgent(env, use_conv=False, gamma=1, tau=0.01, learning_rate=0.005)
 
         episode_rewards, complexity_reductions, awareness_list, orthogonality_list, sparsity_list, diversity_list = mini_batch_train(env, agent, MAX_EPISODES, MAX_STEPS, BATCH_SIZE, calculate_properties=True, milestones=milestones)
 
-        print('episode_rewards', episode_rewards)
-        print('complexity_reductions', complexity_reductions)
-        print('awareness_list', awareness_list)
-        print('orthogonality_list', orthogonality_list)
-        print('sparsity_list', sparsity_list)
-        print('diversity_list', diversity_list)
+        # print('episode_rewards', episode_rewards)
+        # print('complexity_reductions', complexity_reductions)
+        # print('awareness_list', awareness_list)
+        # print('orthogonality_list', orthogonality_list)
+        # print('sparsity_list', sparsity_list)
+        # print('diversity_list', diversity_list)
 
         # maintaining running sums
 
         print('avg shape: ', episode_rewards_avg.shape)
         print('shape: ', episode_rewards.shape)
+
+        # building averages
         episode_rewards_avg += episode_rewards
         complexity_reductions_avg += complexity_reductions
         awareness_list_avg += awareness_list
@@ -128,13 +141,22 @@ else:
         sparsity_list_avg += sparsity_list
         diversity_list_avg += diversity_list
 
-        print('adding')
-        print('episode rewards: ', episode_rewards_avg)
-        print('complexity_reductions_avg: ', complexity_reductions_avg)
-        print('awareness_list_avg: ', awareness_list_avg)
-        print('orthogonality_list_avg: ', orthogonality_list_avg)
-        print('sparsity_list_avg: ', sparsity_list_avg)
-        print('diversity_list_avg: ', diversity_list_avg)
+
+        # building collections
+        episode_rewards_collection[run] = episode_rewards
+        complexity_reductions_collection[run] = complexity_reductions
+        awareness_list_collection[run] = awareness_list
+        orthogonality_list_collection[run] = orthogonality_list
+        sparsity_list_collection[run] = sparsity_list
+        diversity_list_collection[run] = diversity_list
+
+        # print('adding')
+        # print('episode rewards: ', episode_rewards_avg)
+        # print('complexity_reductions_avg: ', complexity_reductions_avg)
+        # print('awareness_list_avg: ', awareness_list_avg)
+        # print('orthogonality_list_avg: ', orthogonality_list_avg)
+        # print('sparsity_list_avg: ', sparsity_list_avg)
+        # print('diversity_list_avg: ', diversity_list_avg)
 
 
     torch.save(agent.model.state_dict(), 'saved_models/model.pt')
@@ -148,24 +170,58 @@ else:
     diversity_list_avg = diversity_list_avg / N_RUNS
     fig = plt.figure(figsize=(6, 4))
     plt.subplot(321)
-    plt.plot(milestones, episode_rewards_avg, label="Rewards")
-    plt.ylabel('Rewards')
-    plt.subplot(322)
-    plt.plot(milestones, complexity_reductions_avg, label="Complexity reduction")
-    plt.ylabel('Complexity Reduction')
-    plt.subplot(323)
-    plt.plot(milestones, awareness_list_avg, label="Awareness")
-    plt.ylabel('Awareness')
-    plt.subplot(324)
-    plt.plot(milestones, orthogonality_list_avg, label="Orthogonality")
-    plt.ylabel('Orthogonality')
-    plt.subplot(325)
-    plt.plot(milestones, sparsity_list_avg, label="Sparsity")
-    plt.ylabel('Sparsity')
-    plt.subplot(326)
-    plt.plot(milestones, diversity_list_avg, label="Diversity")
-    plt.ylabel('Diversity')
+    # plt.plot(milestones, episode_rewards_avg, label="Rewards")
 
+    for i in range(N_RUNS):
+        plt.plot(milestones, episode_rewards_collection[i], label="Rewards")
+    
+    plt.ylabel('Rewards')
+    plt.xlabel('Episode')
+    plt.subplot(322)
+    # plt.plot(milestones, complexity_reductions_avg, label="Complexity reduction")
+
+    for i in range(N_RUNS):
+        plt.plot(milestones, complexity_reductions_collection[i], label="Complexity reduction")
+
+    plt.ylabel('Complexity Reduction')
+    plt.xlabel('Episode')
+    plt.subplot(323)
+
+    for i in range(N_RUNS):
+        plt.plot(milestones, awareness_list_collection[i], label="Awareness")
+    # plt.plot(milestones, awareness_list_avg, label="Awareness")
+    plt.ylabel('Awareness')
+    plt.xlabel('Episode')
+    plt.subplot(324)
+
+    for i in range(N_RUNS):
+        plt.plot(milestones, orthogonality_list_collection[i], label="Orthogonality")
+
+    
+    # plt.plot(milestones, orthogonality_list_avg, label="Orthogonality")
+    plt.ylabel('Orthogonality')
+    plt.xlabel('Episode')
+    plt.subplot(325)
+    # plt.plot(milestones, sparsity_list_avg, label="Sparsity")
+
+    for i in range(N_RUNS):
+        plt.plot(milestones, sparsity_list_collection[i], label="Sparsity")
+
+    plt.ylabel('Sparsity')
+    plt.xlabel('Episode')
+    plt.subplot(326)
+
+    for i in range(N_RUNS):
+        plt.plot(milestones, diversity_list_collection[i], label="Diversity")
+    
+    
+    plt.xlabel('Episode')
+    # plt.plot(milestones, diversity_list_avg, label="Diversity")
+    plt.ylabel('Diversity')
+    
+
+
+    print('--AVERAGES--')
     print('episode rewards: ', episode_rewards_avg)
     print('complexity_reductions_avg: ', complexity_reductions_avg)
     print('awareness_list_avg: ', awareness_list_avg)
@@ -173,6 +229,15 @@ else:
     print('sparsity_list_avg: ', sparsity_list_avg)
     print('diversity_list_avg: ', diversity_list_avg)
 
+
+
+    print('--COLLECTIONS--')
+    print('episode rewards: ', episode_rewards_collection)
+    print('complexity_reductions_avg: ', complexity_reductions_collection)
+    print('awareness_list_avg: ', awareness_list_collection)
+    print('orthogonality_list_avg: ', orthogonality_list_collection)
+    print('sparsity_list_avg: ', sparsity_list_collection)
+    print('diversity_list_avg: ', diversity_list_collection)
 
     # plt.legend()
 
@@ -183,18 +248,18 @@ else:
 
 # print('tupels ', env.observation_space.shape)
 
-properties = MeasureProperties(N, agent.model.representation_size, env.observation_space.shape[0], env.action_space.n)
+# properties = MeasureProperties(N, agent.model.representation_size, env.observation_space.shape[0], env.action_space.n)
 
 
 
-properties.initialize_data(agent)
+# properties.initialize_data(agent)
 
-print('complexity reduction: ', properties.get_L_rep())
+# print('complexity reduction: ', properties.get_L_rep())
 
-print('awareness: ', properties.awareness())
-print('orthogonality: ', properties.orthogonality())
-print('sparsity: ', properties.sparsity())
-print('diversity: ', properties.diversity()) # gives runtime warning debug LATER
+# print('awareness: ', properties.awareness())
+# print('orthogonality: ', properties.orthogonality())
+# print('sparsity: ', properties.sparsity())
+# print('diversity: ', properties.diversity()) # gives runtime warning debug LATER
 
 
 

@@ -56,13 +56,22 @@ class DQN(nn.Module):
 
         # print('self.input dim ', self.input_dim[0])
         
-        self.fc = nn.Sequential(
+        # self.fc = nn.Sequential(
+        #     nn.Linear(self.input_dim[0], 128),
+        #     nn.ReLU(),
+        #     nn.Linear(128, 256),
+        #     nn.ReLU(),
+        #     nn.Linear(self.representation_size, self.output_dim)
+        # )
+
+        self.representation_layer = nn.Sequential(
             nn.Linear(self.input_dim[0], 128),
             nn.ReLU(),
-            nn.Linear(128, 256),
-            nn.ReLU(),
-            nn.Linear(self.representation_size, self.output_dim)
+            nn.Linear(128, self.representation_size),
+            nn.ReLU()
         )
+
+        self.output_layer = nn.Linear(self.representation_size, self.output_dim)
 
         # for m in self.modules():
         #     if isinstance(m, nn.Linear):
@@ -71,19 +80,18 @@ class DQN(nn.Module):
 
 
     def forward(self, state):
-        qvals = self.fc(state)
+
+        y = self.get_representation(state)
+
+
+        qvals = self.output_layer(y)
         return qvals
 
     def get_representation(self, state):
-        fc = nn.Sequential(
-            nn.Linear(self.input_dim[0], 128),
-            nn.ReLU(),
-            nn.Linear(128, self.representation_size),
-            nn.ReLU()
-        )
-
+        
+        
         # y = fc(state)
         # print('shapeee ' , y.shape)
-        return fc(state)
+        return self.representation_layer(state)
 
 

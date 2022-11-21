@@ -95,6 +95,11 @@ class McEnv(gym.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
+    def is_goal(self):
+        return bool(
+            self.state[0] >= self.goal_position and self.state[1] >= self.goal_velocity
+        )
+
     def step(self, action):
         assert self.action_space.contains(action), "%r (%s) invalid" % (action, type(action))
 
