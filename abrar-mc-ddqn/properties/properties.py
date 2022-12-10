@@ -6,6 +6,8 @@ import random
 
 import torch
 
+import matplotlib.pyplot as plt
+
 
 
 class MeasureProperties:
@@ -185,6 +187,57 @@ class MeasureProperties:
                     sparse_sum += 1 / (d * n)
 
         return sparse_sum
+
+
+class VisualizeRepresentation:
+    def __init__(self, agent, env) -> None:
+        self.agent = agent
+        self.env = env
+        pass
+    def visualize_env(self, layer='output'):
+        # print('XXX ', xx)
+        # print('YY', yy)
+
+        xx, yy, zz = self.return_visualization(layer)
+
+        print('ZZZZ', np.flip(zz, axis=0))
+
+        cs = plt.contourf(xx, yy, zz, cmap='Paired')
+        plt.clabel(cs, inline=1, fontsize=10)
+        # plt.legend()
+
+    def return_visualization(self, layer='output'):
+        # show image of NN layer outputs of all states in env
+
+        if layer == 'output':
+            network = self.agent.model.forward
+        elif layer == 'hidden':
+            network = self.agent.model.get_representation
+        
+        min_position, max_position = self.env.min_position, self.env.max_position
+
+        min_speed, max_speed = -self.env.max_speed, self.env.max_speed
+
+
+        position_grid = np.arange(min_position, max_position, 0.1)
+        speed_grid = np.arange(min_speed, max_speed, 0.01)
+
+        xx, yy = np.meshgrid(position_grid, speed_grid)
+
+        r1, r2 = xx.flatten(), yy.flatten()
+
+        r1, r2 = r1.reshape((len(r1), 1)), r2.reshape((len(r2), 1))
+
+        grid = torch.tensor(np.hstack((r1,r2))).float()
+
+        grid_output = torch.argmax(network(grid), dim=1).detach().cpu().numpy()
+        # print('OUTPUTSSS ', grid_output)
+
+        zz = grid_output.reshape(xx.shape)
+
+        return xx, yy, zz
+
+
 
 
 class Transition:
