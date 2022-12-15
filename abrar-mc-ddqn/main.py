@@ -12,14 +12,16 @@ import numpy as np
 
 
 env_id = "gym_mc:mc-v0"
-MAX_EPISODES = 100
+MAX_EPISODES = 200
 MAX_STEPS = 1000
 BATCH_SIZE = 64
 N = 500
-MEASUREMENT_INTERVAL = 30
+MEASUREMENT_INTERVAL = 50
 N_RUNS = 1
 
 LOAD_FROM_FILE = False
+
+TSNE_COLOR = 'max_action_values'
 
 
 
@@ -66,13 +68,14 @@ diversity_list_collection = np.zeros((N_RUNS, len(milestones),))
 
 for run in range(N_RUNS):
     
-    agent = DQNAgent(env, gamma=1, tau=0.01, learning_rate=0.005)
+    agent = DQNAgent(env, gamma=1, tau=0.01, learning_rate=0.0005)
+    # agent = DQNAgent(env, gamma=1, tau=0.01, learning_rate=0.005)
 
     agent_model_state_dicts, episode_rewards = agent.mini_batch_train(env, agent, MAX_EPISODES, MAX_STEPS, BATCH_SIZE, milestones=milestones)
 
     agent_properties  = AgentPropertiesWrapper(env, agent.gamma, agent.tau, agent.learning_rate, N)
 
-    all_properties = agent_properties.return_properties(agent_model_state_dicts)
+    all_properties = agent_properties.return_properties(agent_model_state_dicts, tsne_colors=TSNE_COLOR)
 
     milestone_rewards = np.array(episode_rewards)[milestones]
 
@@ -95,11 +98,7 @@ torch.save(agent.model.state_dict(), 'saved_models/model.pt')
 torch.save(agent.target_model.state_dict(), 'saved_models/target_model.pt')
 
 
-# use best model
-agent.model.load_state_dict(torch.load('saved_models/best_model.pt'))
-agent.model.load_state_dict(torch.load('saved_models/best_target_model.pt'))
 
-print('BEST EPISODE REWARD: ', max(episode_rewards))
 
 
 
@@ -134,18 +133,54 @@ plt.show()
 
 
 # PLOTTING HIDDEN LAYER TSNE PLOTS
-fig, axs = plt.subplots(1, 4, figsize=(10, 3))
+fig, axs = plt.subplots(1, 5, figsize=(10, 10))
 for i, ax in enumerate(axs):
     # ax.imshow(representation_list[i])
     if i < n_milestones:
         # print('ZZZZ for ', i, ' ', np.flip(zz_list[i], axis=0))
-        scatter = ax.scatter(all_properties['milestone_tsne_class_clusters']['tsne_x'][i], all_properties['milestone_tsne_class_clusters']['tsne_y'][i], c=all_properties['milestone_tsne_class_clusters']['class'][i])
-        classes = ['Left', 'Coast', 'Right']
-        ax.set_title('Reward: ' + str(milestone_rewards[i]))
-        ax.legend(handles=scatter.legend_elements()[0], labels=classes)
+
+        if TSNE_COLOR == 'actions':
+            scatter = ax.scatter(all_properties['milestone_tsne_class_clusters']['tsne_x'][i], all_properties['milestone_tsne_class_clusters']['tsne_y'][i], c=all_properties['milestone_tsne_class_clusters']['class'][i])
+            classes = ['Left', 'Coast', 'Right']
+            ax.set_title('Reward: ' + str(milestone_rewards[i]))
+            ax.legend(handles=scatter.legend_elements()[0], labels=classes)
+        elif TSNE_COLOR == 'max_action_values':
+            scatter = ax.scatter(all_properties['milestone_tsne_class_clusters']['tsne_x'][i], all_properties['milestone_tsne_class_clusters']['tsne_y'][i], c=all_properties['milestone_tsne_class_clusters']['class'][i], cmap='plasma')
+            ax.set_title('Reward: ' + str(milestone_rewards[i]))
+            fig.colorbar(scatter)
+            # ax.legend(handles=scatter.legend_elements()[0], labels=classes)
         
         
 plt.show()
+
+
+# PLOT TSNE FOR BEST MODEL
+
+# use best model
+# agent.model.load_state_dict(torch.load('saved_models/best_model.pt'))
+# agent.model.load_state_dict(torch.load('saved_models/best_target_model.pt'))
+
+# print('BEST EPISODE REWARD: ', max(episode_rewards))
+
+
+# fig, axs = plt.subplots(1, 1, figsize=(10, 10))
+
+
+# best_agent_properties = agent_properties.return_properties([agent.model.state_dict()], tsne_colors=TSNE_COLOR)
+
+# i = 0
+
+# scatter = axs.scatter(best_agent_properties['milestone_tsne_class_clusters']['tsne_x'][i], all_properties['milestone_tsne_class_clusters']['tsne_y'][i], c=all_properties['milestone_tsne_class_clusters']['class'][i], cmap='plasma')
+
+
+# axs.set_title('Best Reward: ' + str(max(episode_rewards)))
+# fig.colorbar(scatter)
+
+# plt.show()
+
+
+
+
 
 # vr = VisualizeRepresentation(agent, env)
 
@@ -170,34 +205,34 @@ for i, ax in enumerate(axs):
         for j in range(N_RUNS):
             ax.plot(milestones, episode_rewards_collection[j], label="Rewards")
 
-            ax.ylabel('Rewards')
-            ax.xlabel('Episode')
+            ax.set_ylabel('Rewards')
+            ax.set_xlabel('Episode')
     elif i == 1:
         for j in range(N_RUNS):
             ax.plot(milestones, complexity_reductions_collection[j], label="Complexity reduction")
-            ax.ylabel('Complexity Reduction')
-            ax.xlabel('Episode')
+            ax.set_ylabel('Complexity Reduction')
+            ax.set_xlabel('Episode')
     elif i == 2:
         for j in range(N_RUNS):
             ax.plot(milestones, awareness_list_collection[j], label="Awareness")
-            ax.ylabel('Awareness')
-            ax.xlabel('Episode')
+            ax.set_ylabel('Awareness')
+            ax.set_xlabel('Episode')
     elif i == 3:
         for j in range(N_RUNS):
             ax.plot(milestones, orthogonality_list_collection[j], label="Orthogonality")
-            ax.ylabel('Orthogonality')
-            ax.xlabel('Episode')
+            ax.set_ylabel('Orthogonality')
+            ax.set_xlabel('Episode')
 
     elif i == 4:
         for j in range(N_RUNS):
             ax.plot(milestones, sparsity_list_collection[j], label="Sparsity")
-            ax.ylabel('Sparsity')
-            ax.xlabel('Episode')
+            ax.set_ylabel('Sparsity')
+            ax.set_xlabel('Episode')
     elif i == 5:
         for j in range(N_RUNS):
             ax.plot(milestones, diversity_list_collection[j], label="Diversity")
-            ax.xlabel('Episode')
-            ax.ylabel('Diversity')
+            ax.set_xlabel('Episode')
+            ax.set_ylabel('Diversity')
 
 
 # fig = plt.figure(figsize=(6, 4))

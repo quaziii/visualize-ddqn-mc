@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 
 import copy
+import matplotlib.pyplot as plt
 
 # torch.manual_seed(100)
 
@@ -111,8 +112,10 @@ class DQNAgent:
         # print('normsa shape ', normalized_state.shape)
 
         qvals = self.model.forward(normalized_state)
-        action = np.argmax(qvals.cpu().detach().numpy())
+        # action = np.argmax(qvals.cpu().detach().numpy())
+        vals = qvals.cpu().detach().numpy()
         
+        action = np.random.choice(np.flatnonzero(np.isclose(vals, vals.max())))
         if(np.random.randn() < eps):
             # print('take rand')
             return self.env.action_space.sample()
@@ -162,6 +165,8 @@ class DQNAgent:
         for target_param, param in zip(self.target_model.parameters(), self.model.parameters()):
             target_param.data.copy_(self.tau * param + (1 - self.tau) * target_param)
 
+        return loss.detach().cpu()
+
 
     def mini_batch_train(self, env, agent, max_episodes, max_steps, batch_size, milestones = []):
 
@@ -169,8 +174,14 @@ class DQNAgent:
 
         episode_rewards = []
 
+        last_episode_losses = []
+
+        all_losses = []
+
         max_episode_reward = -9999999
         for episode in range(max_episodes):
+
+            
             state = env.reset()
             episode_reward = 0
             
@@ -182,7 +193,11 @@ class DQNAgent:
                 episode_reward += reward
 
                 if len(agent.replay_buffer) > batch_size:
-                    agent.update(batch_size)  
+                    loss = agent.update(batch_size)  
+                    # if episode == max_episodes-1:
+                    #     last_episode_losses.append(loss)
+
+                    all_losses.append(loss)
 
                 if done or step == max_steps-1:
                     episode_rewards.append(episode_reward)
@@ -204,5 +219,8 @@ class DQNAgent:
 
         # reducing learning rate every episode
         # agent.scheduler.step()
+
+        plt.plot(all_losses)
+        plt.show()
 
         return agent_model_state_dicts, episode_rewards

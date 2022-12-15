@@ -233,8 +233,8 @@ class VisualizeRepresentation:
         min_speed, max_speed = -self.env.max_speed, self.env.max_speed
 
 
-        position_grid = np.arange(min_position, max_position, 0.1)
-        speed_grid = np.arange(min_speed, max_speed, 0.01)
+        position_grid = np.arange(min_position, max_position, 0.01)
+        speed_grid = np.arange(min_speed, max_speed, 0.001)
 
         xx, yy = np.meshgrid(position_grid, speed_grid)
 
@@ -253,7 +253,9 @@ class VisualizeRepresentation:
 
         return xx, yy, zz
 
-    def return_tsne_class_clusters(self):
+    def return_tsne_class_clusters(self, colors='actions'):
+
+        # possible colors = ['actions', 'max_action_values', 'side_of_hill']
         min_position, max_position = self.env.min_position, self.env.max_position
 
         min_speed, max_speed = -self.env.max_speed, self.env.max_speed
@@ -272,23 +274,29 @@ class VisualizeRepresentation:
 
         grid = torch.tensor(np.hstack((r1,r2))).float()
 
-        grid_output = torch.argmax(output_network(grid), dim=1).detach().cpu().numpy()
+        if colors == 'actions':
+            grid_output = torch.argmax(output_network(grid), dim=1).detach().cpu().numpy()
+        elif colors == 'max_action_values':
+            grid_output = torch.max(output_network(grid), dim=1)[0].detach().cpu().numpy()
+        # elif colors == 'side_of_hill':
+
+
 
 
         grid_representations = representation_network(grid).detach().cpu().numpy()
 
         tsne = TSNE(n_components=2).fit_transform(grid_representations)
 
-        tsne_0_range = (np.max(tsne[:, 0]) - np.min(tsne[:, 0]))
-        tsne_1_range = (np.max(tsne[:, 1]) - np.min(tsne[:, 1]))
+        # tsne_0_range = (np.max(tsne[:, 0]) - np.min(tsne[:, 0]))
+        # tsne_1_range = (np.max(tsne[:, 1]) - np.min(tsne[:, 1]))
 
-        tsne_0 = tsne[:, 0] - np.min(tsne[:, 0])
-        tsne_1 = tsne[:, 1] - np.min(tsne[:, 1])
+        # tsne_0 = tsne[:, 0] - np.min(tsne[:, 0])
+        # tsne_1 = tsne[:, 1] - np.min(tsne[:, 1])
 
-        tsne_0 = tsne_0 / tsne_0_range
-        tsne_1 = tsne_1 / tsne_1_range
-        tsne[:, 0] = tsne_0
-        tsne[:, 1] = tsne_1
+        # tsne_0 = tsne_0 / tsne_0_range
+        # tsne_1 = tsne_1 / tsne_1_range
+        # tsne[:, 0] = tsne_0
+        # tsne[:, 1] = tsne_1
 
         # plot scatter plot of grid_output vs tsne
 
@@ -320,7 +328,7 @@ class AgentPropertiesWrapper:
         self.n = n
 
         pass
-    def return_properties(self, agent_model_state_dicts):
+    def return_properties(self, agent_model_state_dicts, tsne_colors='actions'):
         '''
         Calculate properties and representation stuff and return everything for each model state dictionary in agent_model_state_dicts
         '''
@@ -354,7 +362,7 @@ class AgentPropertiesWrapper:
         visualize_rep = VisualizeRepresentation(dummy_agent, self.env)
 
         decision_boundary_classes_shape = visualize_rep.return_decision_boundary()[2].shape
-        tsne_classes_shape = visualize_rep.return_tsne_class_clusters()[2].shape
+        tsne_classes_shape = visualize_rep.return_tsne_class_clusters(tsne_colors)[2].shape
 
 
         # used to plot decision boundaries of model for each milestone
@@ -394,7 +402,7 @@ class AgentPropertiesWrapper:
             milestone_decision_boundaries['state_x'][i], milestone_decision_boundaries['state_y'][i], milestone_decision_boundaries['class'][i] = visualize_rep.return_decision_boundary()
 
             # store tsne plots of hidden layers 
-            milestone_tsne_class_clusters['tsne_x'][i], milestone_tsne_class_clusters['tsne_y'][i],milestone_tsne_class_clusters['class'][i] = visualize_rep.return_tsne_class_clusters()
+            milestone_tsne_class_clusters['tsne_x'][i], milestone_tsne_class_clusters['tsne_y'][i],milestone_tsne_class_clusters['class'][i] = visualize_rep.return_tsne_class_clusters(tsne_colors)
 
             # store reward
             # LATER IF NEEDED

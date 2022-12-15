@@ -14,7 +14,7 @@ class DQN(nn.Module):
         super(DQN, self).__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
-        self.representation_size = 16
+        self.representation_size = 64
 
         # print('self.input dim ', self.input_dim[0])
         
@@ -27,9 +27,9 @@ class DQN(nn.Module):
         # )
 
         self.representation_layer = nn.Sequential(
-            nn.Linear(self.input_dim[0], 32),
+            nn.Linear(self.input_dim[0], 128),
             nn.ReLU(),
-            nn.Linear(32, self.representation_size),
+            nn.Linear(128, self.representation_size),
             nn.ReLU()
         )
 
