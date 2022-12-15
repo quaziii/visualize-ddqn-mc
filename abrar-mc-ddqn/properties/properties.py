@@ -394,7 +394,7 @@ class AgentPropertiesWrapper:
             milestone_decision_boundaries['state_x'][i], milestone_decision_boundaries['state_y'][i], milestone_decision_boundaries['class'][i] = visualize_rep.return_decision_boundary()
 
             # store tsne plots of hidden layers 
-            milestone_tsne_class_clusters['tsne_x'], milestone_tsne_class_clusters['tsne_y'],milestone_tsne_class_clusters['class'] = visualize_rep.return_tsne_class_clusters()
+            milestone_tsne_class_clusters['tsne_x'][i], milestone_tsne_class_clusters['tsne_y'][i],milestone_tsne_class_clusters['class'][i] = visualize_rep.return_tsne_class_clusters()
 
             # store reward
             # LATER IF NEEDED

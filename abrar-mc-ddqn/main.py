@@ -12,12 +12,11 @@ import numpy as np
 
 
 env_id = "gym_mc:mc-v0"
-MAX_EPISODES = 2
+MAX_EPISODES = 100
 MAX_STEPS = 1000
 BATCH_SIZE = 64
 N = 500
-MEASUREMENT_INTERVAL = 500
-REPRESENTATION_MEASUREMENT_INTERVAL = 30
+MEASUREMENT_INTERVAL = 30
 N_RUNS = 1
 
 LOAD_FROM_FILE = False
@@ -31,7 +30,6 @@ env = gym.make(env_id)
 milestones = np.arange(0, MAX_EPISODES-1, MEASUREMENT_INTERVAL)
 
 n_milestones = len(milestones)
-representation_milestones = np.arange(0, MAX_EPISODES-1, REPRESENTATION_MEASUREMENT_INTERVAL)
 
 
 # averages
@@ -143,6 +141,7 @@ for i, ax in enumerate(axs):
         # print('ZZZZ for ', i, ' ', np.flip(zz_list[i], axis=0))
         scatter = ax.scatter(all_properties['milestone_tsne_class_clusters']['tsne_x'][i], all_properties['milestone_tsne_class_clusters']['tsne_y'][i], c=all_properties['milestone_tsne_class_clusters']['class'][i])
         classes = ['Left', 'Coast', 'Right']
+        ax.set_title('Reward: ' + str(milestone_rewards[i]))
         ax.legend(handles=scatter.legend_elements()[0], labels=classes)
         
         
@@ -170,21 +169,35 @@ for i, ax in enumerate(axs):
     if i == 0:
         for j in range(N_RUNS):
             ax.plot(milestones, episode_rewards_collection[j], label="Rewards")
+
+            ax.ylabel('Rewards')
+            ax.xlabel('Episode')
     elif i == 1:
         for j in range(N_RUNS):
             ax.plot(milestones, complexity_reductions_collection[j], label="Complexity reduction")
+            ax.ylabel('Complexity Reduction')
+            ax.xlabel('Episode')
     elif i == 2:
         for j in range(N_RUNS):
             ax.plot(milestones, awareness_list_collection[j], label="Awareness")
+            ax.ylabel('Awareness')
+            ax.xlabel('Episode')
     elif i == 3:
         for j in range(N_RUNS):
             ax.plot(milestones, orthogonality_list_collection[j], label="Orthogonality")
+            ax.ylabel('Orthogonality')
+            ax.xlabel('Episode')
+
     elif i == 4:
         for j in range(N_RUNS):
             ax.plot(milestones, sparsity_list_collection[j], label="Sparsity")
+            ax.ylabel('Sparsity')
+            ax.xlabel('Episode')
     elif i == 5:
         for j in range(N_RUNS):
             ax.plot(milestones, diversity_list_collection[j], label="Diversity")
+            ax.xlabel('Episode')
+            ax.ylabel('Diversity')
 
 
 # fig = plt.figure(figsize=(6, 4))

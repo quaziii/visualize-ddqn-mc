@@ -1,14 +1,13 @@
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-import torch.autograd as autograd
+
+import copy
 
 # torch.manual_seed(100)
 
 
 
 import numpy as np
-import gym
 import random
 from collections import deque
 
@@ -201,7 +200,7 @@ class DQNAgent:
             
 
             if episode in milestones:
-                agent_model_state_dicts.append(agent.model.state_dict())
+                agent_model_state_dicts.append(copy.deepcopy(agent.model.state_dict()))
 
         # reducing learning rate every episode
         # agent.scheduler.step()
