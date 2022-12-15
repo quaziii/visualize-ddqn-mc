@@ -12,9 +12,7 @@ import gym
 import random
 from collections import deque
 
-from ddqn.model import ConvDQN, DQN
-
-from properties.properties import MeasureProperties
+from ddqn.model import DQN
 
 # taken from https://github.com/cyoon1729/deep-Q-networks/blob/master/doubleDQN/ddqn.py
 
@@ -55,7 +53,7 @@ class BasicBuffer:
 
 class DQNAgent:
 
-    def __init__(self, env, use_conv=True, learning_rate=3e-4, gamma=0.99, tau=0.01, buffer_size=10000):
+    def __init__(self, env, learning_rate=3e-4, gamma=0.99, tau=0.01, buffer_size=10000):
         self.env = env
         self.learning_rate = learning_rate
         self.gamma = gamma
@@ -68,14 +66,9 @@ class DQNAgent:
             self.device = "mps"
             self.device = "cpu"
 
-        self.use_conv = use_conv
-        if self.use_conv:
-            self.model = ConvDQN
-            (env.observation_space.shape, env.action_space.n).to(self.device)
-            self.target_model = ConvDQN(env.observation_space.shape, env.action_space.n).to(self.device)
-        else:
-            self.model = DQN(env.observation_space.shape, env.action_space.n).to(self.device)
-            self.target_model = DQN(env.observation_space.shape, env.action_space.n).to(self.device)
+
+        self.model = DQN(env.observation_space.shape, env.action_space.n).to(self.device)
+        self.target_model = DQN(env.observation_space.shape, env.action_space.n).to(self.device)
 
         # hard copy model parameters to target model parameters
         for target_param, param in zip(self.model.parameters(), self.target_model.parameters()):
@@ -169,3 +162,48 @@ class DQNAgent:
         # target network update
         for target_param, param in zip(self.target_model.parameters(), self.model.parameters()):
             target_param.data.copy_(self.tau * param + (1 - self.tau) * target_param)
+
+
+    def mini_batch_train(self, env, agent, max_episodes, max_steps, batch_size, milestones = []):
+
+        agent_model_state_dicts = []
+
+        episode_rewards = []
+
+        max_episode_reward = -9999999
+        for episode in range(max_episodes):
+            state = env.reset()
+            episode_reward = 0
+            
+
+            for step in range(max_steps):
+                action = agent.get_action(state)
+                next_state, reward, done, _ = env.step(action)
+                agent.replay_buffer.push(state, action, reward, next_state, done)
+                episode_reward += reward
+
+                if len(agent.replay_buffer) > batch_size:
+                    agent.update(batch_size)  
+
+                if done or step == max_steps-1:
+                    episode_rewards.append(episode_reward)
+                    print("Episode " + str(episode) + ": " + str(episode_reward))
+                    break
+
+                state = next_state
+
+            if episode_reward > max_episode_reward:
+                torch.save(agent.model.state_dict(), 'saved_models/best_model.pt')
+                torch.save(agent.target_model.state_dict(), 'saved_models/best_target_model.pt')
+                max_episode_reward = episode_reward
+            
+          
+            
+
+            if episode in milestones:
+                agent_model_state_dicts.append(agent.model.state_dict())
+
+        # reducing learning rate every episode
+        # agent.scheduler.step()
+
+        return agent_model_state_dicts, episode_rewards
