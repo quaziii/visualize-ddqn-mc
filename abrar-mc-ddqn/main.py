@@ -9,23 +9,38 @@ import torch
 import matplotlib.pyplot as plt
 import numpy as np
 
+import random
+
+from hypers import *
 
 
-env_id = "gym_mc:mc-v0"
-MAX_EPISODES = 200
-MAX_STEPS = 1000
-BATCH_SIZE = 64
-N = 500
-MEASUREMENT_INTERVAL = 50
-N_RUNS = 1
+# env_id = "gym_mc:mc-v0"
+# MAX_EPISODES = 300
+# MAX_STEPS = 1000
+# BATCH_SIZE = 64
+# N = 500
+# MEASUREMENT_INTERVAL = 10
+# N_RUNS = 1
+# LEARNING_RATE = 1e-3
 
-LOAD_FROM_FILE = False
+# LOAD_FROM_FILE = False
 
-TSNE_COLOR = 'max_action_values'
+# TSNE_COLOR = 'max_action_values' # or 'actions', 'velocity_sign', 'velocity', 'position_and_velocity', 'max_action_value'
+
+# RANDOM_SEED = 0
+
+
+LOOK_FOR_CONTINUALLY_INCREASING_REWARD = False
+torch.manual_seed(RANDOM_SEED)
+random.seed(RANDOM_SEED)
+np.random.seed(RANDOM_SEED)
+torch.use_deterministic_algorithms(True)
 
 
 
 env = gym.make(env_id)
+
+env.seed(0)
 # agent = DQNAgent(env, use_conv=False, gamma=1, tau=0.01, learning_rate=0.005)
 # milestones = [1, 20, 50, 100, 150, 190, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900]
 
@@ -68,16 +83,24 @@ diversity_list_collection = np.zeros((N_RUNS, len(milestones),))
 
 for run in range(N_RUNS):
     
-    agent = DQNAgent(env, gamma=1, tau=0.01, learning_rate=0.0005)
-    # agent = DQNAgent(env, gamma=1, tau=0.01, learning_rate=0.005)
+    # agent = DQNAgent(env, gamma=1, tau=0.01, learning_rate=0.0005)
+    
 
-    agent_model_state_dicts, episode_rewards = agent.mini_batch_train(env, agent, MAX_EPISODES, MAX_STEPS, BATCH_SIZE, milestones=milestones)
+
+    restart_flag = True
+    while restart_flag:
+        agent = DQNAgent(env, gamma=1, tau=0.01, learning_rate=LEARNING_RATE)
+        agent_model_state_dicts, episode_rewards, eval_milestone_rewards, restart_flag = agent.mini_batch_train(MAX_EPISODES, MAX_STEPS, BATCH_SIZE, milestones=milestones, look_for_continually_increasing_reward=LOOK_FOR_CONTINUALLY_INCREASING_REWARD)
 
     agent_properties  = AgentPropertiesWrapper(env, agent.gamma, agent.tau, agent.learning_rate, N)
 
     all_properties = agent_properties.return_properties(agent_model_state_dicts, tsne_colors=TSNE_COLOR)
 
-    milestone_rewards = np.array(episode_rewards)[milestones]
+
+
+    # milestone_rewards = np.array(episode_rewards)[milestones]
+
+    milestone_rewards = eval_milestone_rewards
 
 
     # building averages
@@ -125,6 +148,8 @@ for i, ax in enumerate(axs):
     if i < n_milestones:
         # print('ZZZZ for ', i, ' ', np.flip(zz_list[i], axis=0))
         ax.contourf(all_properties['milestone_decision_boundaries']['state_x'][i], all_properties['milestone_decision_boundaries']['state_y'][i], all_properties['milestone_decision_boundaries']['class'][i])
+        # ax.set_title('Output decision boundary for agent with reward: ' + str(milestone_rewards[i]))
+        ax.set_title('Reward: ' + str(milestone_rewards[i]))
 
 
     # plt.subplot(str(len(representation_list) // 2 + 1) + '2' + str(i))
@@ -133,22 +158,78 @@ plt.show()
 
 
 # PLOTTING HIDDEN LAYER TSNE PLOTS
-fig, axs = plt.subplots(1, 5, figsize=(10, 10))
+fig, axs = plt.subplots(1, 10, figsize=(10, 10))
+for i, ax in enumerate(axs):
+    # ax.imshow(representation_list[i])
+
+    i += n_milestones - 10
+
+    
+    if i < n_milestones:
+        # print('ZZZZ for ', i, ' ', np.flip(zz_list[i], axis=0))
+
+        if TSNE_COLOR == 'actions' or TSNE_COLOR == 'velocity_sign':
+            scatter = ax.scatter(all_properties['milestone_tsne_class_clusters']['tsne_x'][i], all_properties['milestone_tsne_class_clusters']['tsne_y'][i], c=all_properties['milestone_tsne_class_clusters']['class'][i])
+
+            
+            classes = ['Left', 'Coast', 'Right'] if TSNE_COLOR == 'actions' else ['Negative', 'Zero', 'Positive']
+            ax.set_title('Reward: ' + str(milestone_rewards[i]))
+            ax.legend(handles=scatter.legend_elements()[0], labels=classes)
+        elif TSNE_COLOR == 'max_action_values':
+
+            # process tnse plots to remove > 0 action values.
+            tsne_x = all_properties['milestone_tsne_class_clusters']['tsne_x'][i]
+            tsne_y = all_properties['milestone_tsne_class_clusters']['tsne_y'][i]
+            tsne_z = all_properties['milestone_tsne_class_clusters']['class'][i]
+
+            processed_tsne_x = tsne_x[tsne_z < 0]
+            processed_tsne_y = tsne_y[tsne_z < 0]
+            processed_tsne_z = tsne_z[tsne_z < 0]
+
+            scatter = ax.scatter(processed_tsne_x, processed_tsne_y, c=processed_tsne_z, cmap='plasma')
+            # ax.set_title('max action value for agent with Reward: ' + str(milestone_rewards[i]))
+            ax.set_title('Reward: ' + str(milestone_rewards[i]))
+            fig.colorbar(scatter)
+        elif TSNE_COLOR == 'velocity':
+            scatter = ax.scatter(all_properties['milestone_tsne_class_clusters']['tsne_x'][i], all_properties['milestone_tsne_class_clusters']['tsne_y'][i], c=all_properties['milestone_tsne_class_clusters']['class'][i], cmap='plasma')
+            # ax.set_title('Velocity for agent with Reward: ' + str(milestone_rewards[i]))
+            ax.set_title('Reward: ' + str(milestone_rewards[i]))
+
+            fig.colorbar(scatter)
+
+        elif TSNE_COLOR == 'position_and_velocity':
+
+            scatter = ax.scatter(all_properties['milestone_tsne_class_clusters']['tsne_x'][i], all_properties['milestone_tsne_class_clusters']['tsne_y'][i], c=all_properties['milestone_tsne_class_clusters']['class'][i][1], s=all_properties['milestone_tsne_class_clusters']['class'][i][0], cmap='plasma')
+            # ax.set_title('Velocity for agent with Reward: ' + str(milestone_rewards[i]))
+            ax.set_title('Reward: ' + str(milestone_rewards[i]))
+
+            fig.colorbar(scatter)
+
+
+
+        
+
+            # ax.legend(handles=scatter.legend_elements()[0], labels=classes)
+        
+        
+plt.show()
+
+# PLOTTING HIDDEN LAYER TSNE PLOTS, WITH SELECTED ACTION VALUES
+
+selected_action_tsne_class_clusters = agent_properties.return_properties(agent_model_state_dicts, tsne_colors='actions')['milestone_tsne_class_clusters']
+fig, axs = plt.subplots(1, 10, figsize=(10, 10))
 for i, ax in enumerate(axs):
     # ax.imshow(representation_list[i])
     if i < n_milestones:
         # print('ZZZZ for ', i, ' ', np.flip(zz_list[i], axis=0))
 
-        if TSNE_COLOR == 'actions':
-            scatter = ax.scatter(all_properties['milestone_tsne_class_clusters']['tsne_x'][i], all_properties['milestone_tsne_class_clusters']['tsne_y'][i], c=all_properties['milestone_tsne_class_clusters']['class'][i])
-            classes = ['Left', 'Coast', 'Right']
-            ax.set_title('Reward: ' + str(milestone_rewards[i]))
-            ax.legend(handles=scatter.legend_elements()[0], labels=classes)
-        elif TSNE_COLOR == 'max_action_values':
-            scatter = ax.scatter(all_properties['milestone_tsne_class_clusters']['tsne_x'][i], all_properties['milestone_tsne_class_clusters']['tsne_y'][i], c=all_properties['milestone_tsne_class_clusters']['class'][i], cmap='plasma')
-            ax.set_title('Reward: ' + str(milestone_rewards[i]))
-            fig.colorbar(scatter)
-            # ax.legend(handles=scatter.legend_elements()[0], labels=classes)
+        
+        scatter = ax.scatter(selected_action_tsne_class_clusters['tsne_x'][i], selected_action_tsne_class_clusters['tsne_y'][i], c=selected_action_tsne_class_clusters['class'][i])
+        classes = ['Left', 'Coast', 'Right']
+        # ax.set_title('Action the agent selects with Reward: ' + str(milestone_rewards[i]))
+        ax.set_title('Reward: ' + str(milestone_rewards[i]))
+        ax.legend(handles=scatter.legend_elements()[0], labels=classes)
+
         
         
 plt.show()
@@ -157,26 +238,36 @@ plt.show()
 # PLOT TSNE FOR BEST MODEL
 
 # use best model
-# agent.model.load_state_dict(torch.load('saved_models/best_model.pt'))
-# agent.model.load_state_dict(torch.load('saved_models/best_target_model.pt'))
+agent.model.load_state_dict(torch.load('saved_models/best_model.pt'))
+agent.target_model.load_state_dict(torch.load('saved_models/best_target_model.pt'))
 
-# print('BEST EPISODE REWARD: ', max(episode_rewards))
-
-
-# fig, axs = plt.subplots(1, 1, figsize=(10, 10))
+print('BEST EPISODE REWARD: ', max(episode_rewards))
 
 
-# best_agent_properties = agent_properties.return_properties([agent.model.state_dict()], tsne_colors=TSNE_COLOR)
-
-# i = 0
-
-# scatter = axs.scatter(best_agent_properties['milestone_tsne_class_clusters']['tsne_x'][i], all_properties['milestone_tsne_class_clusters']['tsne_y'][i], c=all_properties['milestone_tsne_class_clusters']['class'][i], cmap='plasma')
+fig, axs = plt.subplots(1, 1, figsize=(10, 10))
 
 
-# axs.set_title('Best Reward: ' + str(max(episode_rewards)))
-# fig.colorbar(scatter)
+best_agent_properties = agent_properties.return_properties([agent.model.state_dict()], tsne_colors=TSNE_COLOR)
+i = 0
+# process tnse plots to remove > 0 action values.
 
-# plt.show()
+tsne_x = best_agent_properties['milestone_tsne_class_clusters']['tsne_x'][i]
+tsne_y = best_agent_properties['milestone_tsne_class_clusters']['tsne_y'][i]
+tsne_z = best_agent_properties['milestone_tsne_class_clusters']['class'][i]
+
+processed_tsne_x = tsne_x[tsne_z < 0]
+processed_tsne_y = tsne_y[tsne_z < 0]
+processed_tsne_z = tsne_z[tsne_z < 0]
+
+scatter = axs.scatter(processed_tsne_x, processed_tsne_y, c=processed_tsne_z, cmap='plasma')
+
+# print('HEAT VALUESS ', best_agent_properties['milestone_tsne_class_clusters']['class'][i])
+
+
+axs.set_title('Best Reward: ' + str(max(episode_rewards)))
+fig.colorbar(scatter)
+
+plt.show()
 
 
 

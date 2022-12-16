@@ -10,6 +10,8 @@ import gym
 from gym import spaces
 from gym.utils import seeding
 
+from hypers import *
+
 
 class McEnv(gym.Env):
     """
@@ -84,7 +86,7 @@ class McEnv(gym.Env):
 
         self.viewer = None
 
-        self.action_space = spaces.Discrete(3)
+        self.action_space = spaces.Discrete(3, RANDOM_SEED)
         self.observation_space = spaces.Box(
             self.low, self.high, dtype=np.float32
         )

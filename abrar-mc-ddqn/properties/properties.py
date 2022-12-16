@@ -13,7 +13,6 @@ from sklearn.manifold import TSNE
 from ddqn.my_ddqn import DQNAgent
 
 
-
 class MeasureProperties:
     def __init__(self, n, representation_size, env) -> None:
         self.transitions: list(Transition) = [] # store 1000 transitions
@@ -233,11 +232,13 @@ class VisualizeRepresentation:
         min_speed, max_speed = -self.env.max_speed, self.env.max_speed
 
 
-        position_grid = np.arange(min_position, max_position, 0.01)
-        speed_grid = np.arange(min_speed, max_speed, 0.001)
+        position_grid = np.arange(min_position, max_position, 0.2)
+        speed_grid = np.arange(min_speed, max_speed, 0.03)
 
         xx, yy = np.meshgrid(position_grid, speed_grid)
 
+        # print('XX ', xx)
+        # print('YY ', yy)
         
 
         r1, r2 = xx.flatten(), yy.flatten()
@@ -245,6 +246,8 @@ class VisualizeRepresentation:
         r1, r2 = r1.reshape((len(r1), 1)), r2.reshape((len(r2), 1))
 
         grid = torch.tensor(np.hstack((r1,r2))).float()
+
+        # print('grid ', grid)
 
         grid_output = torch.argmax(output_network(grid), dim=1).detach().cpu().numpy()
         # print('OUTPUTSSS ', grid_output)
@@ -255,9 +258,9 @@ class VisualizeRepresentation:
 
     def return_tsne_class_clusters(self, colors='actions'):
 
-        # possible colors = ['actions', 'max_action_values', 'side_of_hill']
-        min_position, max_position = self.env.min_position, self.env.max_position
+        # possible colors = ['actions', 'max_action_values', 'velocity_sign']
 
+        min_position, max_position = self.env.min_position, self.env.max_position
         min_speed, max_speed = -self.env.max_speed, self.env.max_speed
 
         output_network = self.agent.model.forward
@@ -274,18 +277,50 @@ class VisualizeRepresentation:
 
         grid = torch.tensor(np.hstack((r1,r2))).float()
 
+        # print('grid ', grid)
+
         if colors == 'actions':
             grid_output = torch.argmax(output_network(grid), dim=1).detach().cpu().numpy()
         elif colors == 'max_action_values':
+            # print("GRID OUTPUT RAW", output_network(grid).detach().cpu().numpy())
             grid_output = torch.max(output_network(grid), dim=1)[0].detach().cpu().numpy()
+            # print("GRID OUTPUT ", grid_output)
+        elif colors == 'velocity_sign':
+            # grid shape: (n, 2)
+            grid_output = np.sign(grid[:, 1].detach().cpu().numpy()).flatten()
+
+        elif colors == 'velocity':
+            grid_output = grid[:, 1].detach().cpu().numpy().flatten()
+
+        elif colors == 'position_and_velocity':
+
+            BOTTOM = -0.5251529683
+            grid_output = []
+            grid_output.append(np.where(grid[:, 0].detach().cpu().numpy().flatten() > BOTTOM, 10, 5))
+            grid_output.append(grid[:, 1].detach().cpu().numpy().flatten())
+
+            
         # elif colors == 'side_of_hill':
 
+        # print('GRID OUTPUTTT ', grid_output)
 
+        
+
+        
 
 
         grid_representations = representation_network(grid).detach().cpu().numpy()
 
-        tsne = TSNE(n_components=2).fit_transform(grid_representations)
+        tsne = TSNE(n_components=2, init='pca', learning_rate='auto').fit_transform(grid_representations)
+
+        # if colors == 'max_action_values':
+        #     processed_tsne = tsne[grid_output < 0, :]
+
+        #     if processed_grid_output.shape[0] > 0:
+        #         return processed_tsne[:, 0], processed_tsne[:, 1], processed_grid_output.flatten()
+        #     else:
+        #         return tsne[:, 0], tsne[:, 1], grid_output.flatten()
+
 
         # tsne_0_range = (np.max(tsne[:, 0]) - np.min(tsne[:, 0]))
         # tsne_1_range = (np.max(tsne[:, 1]) - np.min(tsne[:, 1]))
@@ -305,6 +340,7 @@ class VisualizeRepresentation:
         # print(tsne[:,1])
         # print(grid_output.flatten())
 
+        # return tsne[:, 0], tsne[:, 1], grid_output.flatten()
         return tsne[:, 0], tsne[:, 1], grid_output.flatten()
         scatter = plt.scatter(tsne[:, 0], tsne[:, 1], c=grid_output.flatten())
         classes = ['Left', 'Coast', 'Right']
@@ -402,7 +438,7 @@ class AgentPropertiesWrapper:
             milestone_decision_boundaries['state_x'][i], milestone_decision_boundaries['state_y'][i], milestone_decision_boundaries['class'][i] = visualize_rep.return_decision_boundary()
 
             # store tsne plots of hidden layers 
-            milestone_tsne_class_clusters['tsne_x'][i], milestone_tsne_class_clusters['tsne_y'][i],milestone_tsne_class_clusters['class'][i] = visualize_rep.return_tsne_class_clusters(tsne_colors)
+            milestone_tsne_class_clusters['tsne_x'][i], milestone_tsne_class_clusters['tsne_y'][i], milestone_tsne_class_clusters['class'][i] = visualize_rep.return_tsne_class_clusters(tsne_colors)
 
             # store reward
             # LATER IF NEEDED
