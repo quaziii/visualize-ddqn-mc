@@ -122,9 +122,14 @@ class McEnv(gym.Env):
 
         # print('state: ', self.state)
         return np.array(self.state), reward, done, {}
-
+    def eval_reset(self):
+        # self.state = np.array([self.np_random.uniform(low=-0.6, high=-0.4), 0])
+        self.state = np.array([-0.5, 0])
+        # self.state = np.array([self.np_random.uniform(low=self.min_position, high=self.max_position), 0]) # randomly sampling over entire position space
+        return np.array(self.state)
     def reset(self):
         self.state = np.array([self.np_random.uniform(low=-0.6, high=-0.4), 0])
+        # self.state = np.array([self.np_random.uniform(low=self.min_position, high=self.max_position), 0]) # randomly sampling over entire position space
         return np.array(self.state)
 
     def _height(self, xs):

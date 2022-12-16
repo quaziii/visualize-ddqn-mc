@@ -92,6 +92,13 @@ for run in range(N_RUNS):
         agent = DQNAgent(env, gamma=1, tau=0.01, learning_rate=LEARNING_RATE)
         agent_model_state_dicts, episode_rewards, eval_milestone_rewards, restart_flag = agent.mini_batch_train(MAX_EPISODES, MAX_STEPS, BATCH_SIZE, milestones=milestones, look_for_continually_increasing_reward=LOOK_FOR_CONTINUALLY_INCREASING_REWARD)
 
+    # PLOTTING EPISODE REWARDS
+
+    plt.plot(episode_rewards)
+
+    plt.title('Episode Rewards')
+    plt.show()
+
     agent_properties  = AgentPropertiesWrapper(env, agent.gamma, agent.tau, agent.learning_rate, N)
 
     all_properties = agent_properties.return_properties(agent_model_state_dicts, tsne_colors=TSNE_COLOR)
@@ -115,11 +122,8 @@ for run in range(N_RUNS):
     diversity_list_collection[run] = all_properties['milestone_properties']['diversity']
 
 
-
-
 torch.save(agent.model.state_dict(), 'saved_models/model.pt')
 torch.save(agent.target_model.state_dict(), 'saved_models/target_model.pt')
-
 
 
 
@@ -162,14 +166,22 @@ fig, axs = plt.subplots(1, 10, figsize=(10, 10))
 for i, ax in enumerate(axs):
     # ax.imshow(representation_list[i])
 
-    i += n_milestones - 10
+    # i += n_milestones - 10
 
     
     if i < n_milestones:
         # print('ZZZZ for ', i, ' ', np.flip(zz_list[i], axis=0))
 
         if TSNE_COLOR == 'actions' or TSNE_COLOR == 'velocity_sign':
-            scatter = ax.scatter(all_properties['milestone_tsne_class_clusters']['tsne_x'][i], all_properties['milestone_tsne_class_clusters']['tsne_y'][i], c=all_properties['milestone_tsne_class_clusters']['class'][i])
+
+            colors = ['red', 'green', 'yellow'] if TSNE_COLOR == 'actions' else ['blue', 'red', 'green']
+
+            # for actions: red = left, yellow = coast, green = right
+
+            # for velocity_sign: red = negative, blue = zero, green = positive
+
+
+            scatter = ax.scatter(all_properties['milestone_tsne_class_clusters']['tsne_x'][i], all_properties['milestone_tsne_class_clusters']['tsne_y'][i], c=[colors[0] if l == 0 else (colors[2] if l == 1 else colors[1]) for l in  all_properties['milestone_tsne_class_clusters']['class'][i]])
 
             
             classes = ['Left', 'Coast', 'Right'] if TSNE_COLOR == 'actions' else ['Negative', 'Zero', 'Positive']
@@ -177,20 +189,26 @@ for i, ax in enumerate(axs):
             ax.legend(handles=scatter.legend_elements()[0], labels=classes)
         elif TSNE_COLOR == 'max_action_values':
 
-            # process tnse plots to remove > 0 action values.
-            tsne_x = all_properties['milestone_tsne_class_clusters']['tsne_x'][i]
-            tsne_y = all_properties['milestone_tsne_class_clusters']['tsne_y'][i]
-            tsne_z = all_properties['milestone_tsne_class_clusters']['class'][i]
+            if PROCESS_TSNE_POSITIVES:
 
-            processed_tsne_x = tsne_x[tsne_z < 0]
-            processed_tsne_y = tsne_y[tsne_z < 0]
-            processed_tsne_z = tsne_z[tsne_z < 0]
+                # process tnse plots to remove > 0 action values.
+                tsne_x = all_properties['milestone_tsne_class_clusters']['tsne_x'][i]
+                tsne_y = all_properties['milestone_tsne_class_clusters']['tsne_y'][i]
+                tsne_z = all_properties['milestone_tsne_class_clusters']['class'][i]
+
+                processed_tsne_x = tsne_x[tsne_z < 0]
+                processed_tsne_y = tsne_y[tsne_z < 0]
+                processed_tsne_z = tsne_z[tsne_z < 0]
+            else:
+                processed_tsne_x = all_properties['milestone_tsne_class_clusters']['tsne_x'][i]
+                processed_tsne_y = all_properties['milestone_tsne_class_clusters']['tsne_y'][i]
+                processed_tsne_z = all_properties['milestone_tsne_class_clusters']['class'][i]
 
             scatter = ax.scatter(processed_tsne_x, processed_tsne_y, c=processed_tsne_z, cmap='plasma')
             # ax.set_title('max action value for agent with Reward: ' + str(milestone_rewards[i]))
             ax.set_title('Reward: ' + str(milestone_rewards[i]))
             fig.colorbar(scatter)
-        elif TSNE_COLOR == 'velocity':
+        elif TSNE_COLOR == 'velocity' or TSNE_COLOR == 'position':
             scatter = ax.scatter(all_properties['milestone_tsne_class_clusters']['tsne_x'][i], all_properties['milestone_tsne_class_clusters']['tsne_y'][i], c=all_properties['milestone_tsne_class_clusters']['class'][i], cmap='plasma')
             # ax.set_title('Velocity for agent with Reward: ' + str(milestone_rewards[i]))
             ax.set_title('Reward: ' + str(milestone_rewards[i]))
@@ -199,7 +217,7 @@ for i, ax in enumerate(axs):
 
         elif TSNE_COLOR == 'position_and_velocity':
 
-            scatter = ax.scatter(all_properties['milestone_tsne_class_clusters']['tsne_x'][i], all_properties['milestone_tsne_class_clusters']['tsne_y'][i], c=all_properties['milestone_tsne_class_clusters']['class'][i][1], s=all_properties['milestone_tsne_class_clusters']['class'][i][0], cmap='plasma')
+            scatter = ax.scatter(all_properties['milestone_tsne_class_clusters']['tsne_x'][i], all_properties['milestone_tsne_class_clusters']['tsne_y'][i], c=all_properties['milestone_tsne_class_clusters']['class'][i], s=all_properties['milestone_tsne_class_clusters']['class2'][i], cmap='plasma')
             # ax.set_title('Velocity for agent with Reward: ' + str(milestone_rewards[i]))
             ax.set_title('Reward: ' + str(milestone_rewards[i]))
 
@@ -210,9 +228,13 @@ for i, ax in enumerate(axs):
         
 
             # ax.legend(handles=scatter.legend_elements()[0], labels=classes)
+
+
         
         
 plt.show()
+
+exit()
 
 # PLOTTING HIDDEN LAYER TSNE PLOTS, WITH SELECTED ACTION VALUES
 

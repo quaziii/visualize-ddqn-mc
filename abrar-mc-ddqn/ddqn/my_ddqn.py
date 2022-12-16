@@ -62,12 +62,14 @@ class BasicBuffer:
 
 class DQNAgent:
 
-    def __init__(self, env, learning_rate=3e-4, gamma=0.99, tau=0.01, buffer_size=10000):
+    def __init__(self, env, learning_rate=3e-4, gamma=0.99, tau=0.01, buffer_size=10000, epsilon=1, epsilon_decay=0.995):
         self.env = env
         self.learning_rate = learning_rate
         self.gamma = gamma
         self.tau = tau
         self.replay_buffer = BasicBuffer(max_size=buffer_size)
+        self.epsilon = epsilon
+        self.epsilon_decay = epsilon_decay
         np.random.seed(RANDOM_SEED)
         torch.manual_seed(RANDOM_SEED)
         random.seed(RANDOM_SEED)
@@ -130,10 +132,13 @@ class DQNAgent:
 
 
     
-    def get_train_action(self, state, eps=0.2):
+    def get_train_action(self, state):
         '''
         More exploratory policy to follow during training
         '''
+
+        self.epsilon *= self.epsilon_decay
+        self.epsilon = max(self.epsilon, 0.01)
         state = torch.FloatTensor(state).float().unsqueeze(0).to(self.device)
 
         # normalize state features
@@ -153,9 +158,8 @@ class DQNAgent:
         
         action = np.random.choice(np.flatnonzero(np.isclose(vals, vals.max())))
 
-        if(np.random.rand() < eps):
+        if(np.random.rand() < self.epsilon):
             # print('take rand')
-            
             return self.env.action_space.sample()
 
         return action
@@ -217,7 +221,7 @@ class DQNAgent:
 
     def evaluate(self, max_steps):
         print('--- EVALUATING MODEL ---')
-        state = self.env.reset()
+        state = self.env.eval_reset()
         episode_reward = 0
         done = False
         step = 0

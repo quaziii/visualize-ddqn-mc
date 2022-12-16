@@ -39,7 +39,8 @@ class MeasureProperties:
 
         self.__init__(self.n, self.representation_size, self.env)
         # env = gym.make('gym_mc:mc-v0')
-        state = self.env.reset()
+        state = self.env.eval_reset()
+        # state = self.env.reset()
         # state is an np array
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -54,6 +55,7 @@ class MeasureProperties:
         # run random policy for n episodes
         for _ in range(self.n):
             done = False
+            # state = self.env.reset() # FORGOT TO RESET ENV, THIS WAS A BUG IN PROPERTIES CODE, CHECK LATER
             while not done:
 
                 action = self.env.action_space.sample()
@@ -215,6 +217,67 @@ class VisualizeRepresentation:
         plt.show()
         # plt.legend()
 
+
+    def sample_states_env_random(self, k=1000):
+        '''
+        sample states by running random agent on environment
+        '''
+
+        # run random policy for n episodes
+
+        states = []
+        print('GENERATING STATES USING RANDOM AGENT IN ENVIRONMENT')
+        
+        for _ in range(5): # setting to 10 instead of k since k takes too long
+            self.env.eval_reset()
+            done = False
+            i = 0
+            # self.env.reset()
+            while not done:
+
+                action = self.env.action_space.sample()
+
+                next_state, reward, done, info = self.env.step(action)
+
+                states.append(next_state)
+                i += 1
+        # print(np.array(states))
+
+        states = random.sample(states, k)
+
+        return torch.tensor(np.array(states), dtype=torch.float)
+
+
+
+    def sample_states_grid(self):
+        '''
+        sample states from grid of possible position and veloicity values
+        '''
+        output_network = self.agent.model.forward
+        
+        min_position, max_position = self.env.min_position, self.env.max_position
+
+        min_speed, max_speed = -self.env.max_speed, self.env.max_speed
+
+
+        position_grid = np.arange(min_position, max_position, 0.2)
+        speed_grid = np.arange(min_speed, max_speed, 0.03)
+
+        xx, yy = np.meshgrid(position_grid, speed_grid)
+
+        # print('XX ', xx)
+        # print('YY ', yy)
+        
+
+        r1, r2 = xx.flatten(), yy.flatten()
+
+        r1, r2 = r1.reshape((len(r1), 1)), r2.reshape((len(r2), 1))
+
+        grid = torch.tensor(np.hstack((r1,r2))).float()
+
+        return grid
+
+
         
     # def return_visualization(self, layer='output'):
     def return_decision_boundary(self):
@@ -246,6 +309,7 @@ class VisualizeRepresentation:
         r1, r2 = r1.reshape((len(r1), 1)), r2.reshape((len(r2), 1))
 
         grid = torch.tensor(np.hstack((r1,r2))).float()
+        
 
         # print('grid ', grid)
 
@@ -260,22 +324,11 @@ class VisualizeRepresentation:
 
         # possible colors = ['actions', 'max_action_values', 'velocity_sign']
 
-        min_position, max_position = self.env.min_position, self.env.max_position
-        min_speed, max_speed = -self.env.max_speed, self.env.max_speed
-
         output_network = self.agent.model.forward
         representation_network = self.agent.model.get_representation
 
-        position_grid = np.arange(min_position, max_position, 0.1)
-        speed_grid = np.arange(min_speed, max_speed, 0.01)
-
-        xx, yy = np.meshgrid(position_grid, speed_grid)
-
-        r1, r2 = xx.flatten(), yy.flatten()
-
-        r1, r2 = r1.reshape((len(r1), 1)), r2.reshape((len(r2), 1))
-
-        grid = torch.tensor(np.hstack((r1,r2))).float()
+        # grid = self.sample_states_grid()
+        grid = self.sample_states_env_random(1000)
 
         # print('grid ', grid)
 
@@ -292,12 +345,16 @@ class VisualizeRepresentation:
         elif colors == 'velocity':
             grid_output = grid[:, 1].detach().cpu().numpy().flatten()
 
+        elif colors == 'position':
+            grid_output = grid[:, 0].detach().cpu().numpy().flatten()
+
+
         elif colors == 'position_and_velocity':
 
             BOTTOM = -0.5251529683
-            grid_output = []
-            grid_output.append(np.where(grid[:, 0].detach().cpu().numpy().flatten() > BOTTOM, 10, 5))
-            grid_output.append(grid[:, 1].detach().cpu().numpy().flatten())
+            
+            grid_output1 = np.where(grid[:, 0].detach().cpu().numpy().flatten() > BOTTOM, 10, 5)
+            grid_output2 = np.sign(grid[:, 1].detach().cpu().numpy().flatten())
 
             
         # elif colors == 'side_of_hill':
@@ -311,7 +368,10 @@ class VisualizeRepresentation:
 
         grid_representations = representation_network(grid).detach().cpu().numpy()
 
+        # print('grid reps ', grid_representations)
+
         tsne = TSNE(n_components=2, init='pca', learning_rate='auto').fit_transform(grid_representations)
+
 
         # if colors == 'max_action_values':
         #     processed_tsne = tsne[grid_output < 0, :]
@@ -341,6 +401,23 @@ class VisualizeRepresentation:
         # print(grid_output.flatten())
 
         # return tsne[:, 0], tsne[:, 1], grid_output.flatten()
+        # return tsne[:, 0], tsne[:, 1], tsne[:, 2]
+
+        if colors == 'position_and_velocity':
+            return {
+                'tsne_x': tsne[:, 0],
+                'tsne_y': tsne[:, 1],
+                'tsne_z': grid_output1,
+                'tsne_z2': grid_output2,
+            }
+        else:
+
+            return {
+                'tsne_x': tsne[:, 0],
+                'tsne_y': tsne[:, 1],
+                'tsne_z': grid_output.flatten(),
+                'tsne_z2': None
+            }
         return tsne[:, 0], tsne[:, 1], grid_output.flatten()
         scatter = plt.scatter(tsne[:, 0], tsne[:, 1], c=grid_output.flatten())
         classes = ['Left', 'Coast', 'Right']
@@ -398,7 +475,7 @@ class AgentPropertiesWrapper:
         visualize_rep = VisualizeRepresentation(dummy_agent, self.env)
 
         decision_boundary_classes_shape = visualize_rep.return_decision_boundary()[2].shape
-        tsne_classes_shape = visualize_rep.return_tsne_class_clusters(tsne_colors)[2].shape
+        tsne_classes_shape = visualize_rep.return_tsne_class_clusters(tsne_colors)['tsne_z'].shape
 
 
         # used to plot decision boundaries of model for each milestone
@@ -413,6 +490,7 @@ class AgentPropertiesWrapper:
             'tsne_x': np.empty((n_milestones, *tsne_classes_shape)),
             'tsne_y': np.empty((n_milestones, *tsne_classes_shape)),
             'class': np.empty((n_milestones, *tsne_classes_shape)),
+            'class2': np.empty((n_milestones, *tsne_classes_shape)),
         }
 
         for i, agent_model_state_dict in enumerate(agent_model_state_dicts):
@@ -438,7 +516,13 @@ class AgentPropertiesWrapper:
             milestone_decision_boundaries['state_x'][i], milestone_decision_boundaries['state_y'][i], milestone_decision_boundaries['class'][i] = visualize_rep.return_decision_boundary()
 
             # store tsne plots of hidden layers 
-            milestone_tsne_class_clusters['tsne_x'][i], milestone_tsne_class_clusters['tsne_y'][i], milestone_tsne_class_clusters['class'][i] = visualize_rep.return_tsne_class_clusters(tsne_colors)
+            
+            
+            tsne_class_clusters = visualize_rep.return_tsne_class_clusters(tsne_colors)
+
+            milestone_tsne_class_clusters['tsne_x'][i], milestone_tsne_class_clusters['tsne_y'][i], milestone_tsne_class_clusters['class'][i] = tsne_class_clusters['tsne_x'], tsne_class_clusters['tsne_y'], tsne_class_clusters['tsne_z']
+
+            milestone_tsne_class_clusters['class2'][i] = tsne_class_clusters['tsne_z2']
 
             # store reward
             # LATER IF NEEDED
