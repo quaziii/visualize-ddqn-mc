@@ -116,6 +116,12 @@ class DQNAgent:
         '''
         Greedy policy to follow during evaluation
         '''
+
+        # trying something! Maybe remove later
+
+        return self.get_train_action(state)
+
+
         state = torch.FloatTensor(state).float().unsqueeze(0).to(self.device)
         # normalize state features
         # state shape: (1,2)
@@ -286,7 +292,9 @@ class DQNAgent:
             
 
             if episode in milestones:
-                eval_reward = self.evaluate(max_steps)
+                # eval_reward = self.evaluate(max_steps)
+                # trying something, maybe change later
+                eval_reward = episode_reward
 
                 if look_for_continually_increasing_reward:
                     if len(evaluate_milestone_rewards) > 0:

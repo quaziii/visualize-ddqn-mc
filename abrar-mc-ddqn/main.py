@@ -48,6 +48,12 @@ milestones = np.arange(0, MAX_EPISODES-1, MEASUREMENT_INTERVAL)
 
 n_milestones = len(milestones)
 
+# add interesting episodes to milestones to visualize reps 
+
+for episode in EPISODES_TO_ADD_TO_MILESTONES:
+    if episode not in milestones:
+        milestones = np.append(milestones, episode)
+
 
 # averages
 episode_rewards_avg = np.zeros((len(milestones),))
@@ -87,17 +93,16 @@ for run in range(N_RUNS):
     
 
 
-    restart_flag = True
-    while restart_flag:
-        agent = DQNAgent(env, gamma=1, tau=0.01, learning_rate=LEARNING_RATE)
-        agent_model_state_dicts, episode_rewards, eval_milestone_rewards, restart_flag = agent.mini_batch_train(MAX_EPISODES, MAX_STEPS, BATCH_SIZE, milestones=milestones, look_for_continually_increasing_reward=LOOK_FOR_CONTINUALLY_INCREASING_REWARD)
 
-    # PLOTTING EPISODE REWARDS
+    agent = DQNAgent(env, gamma=1, tau=0.01, learning_rate=LEARNING_RATE)
+    agent_model_state_dicts, episode_rewards, eval_milestone_rewards, _ = agent.mini_batch_train(MAX_EPISODES, MAX_STEPS, BATCH_SIZE, milestones=milestones, look_for_continually_increasing_reward=LOOK_FOR_CONTINUALLY_INCREASING_REWARD)
 
-    plt.plot(episode_rewards)
+    # # PLOTTING EPISODE REWARDS
 
-    plt.title('Episode Rewards')
-    plt.show()
+    # plt.plot(episode_rewards)
+
+    # plt.title('Episode Rewards')
+    # plt.show()
 
     agent_properties  = AgentPropertiesWrapper(env, agent.gamma, agent.tau, agent.learning_rate, N)
 
@@ -114,7 +119,7 @@ for run in range(N_RUNS):
     episode_rewards_avg += milestone_rewards
 
     # building collections
-    episode_rewards_collection[run] = milestone_rewards
+    episode_rewards_collection[run] = episode_rewards
     complexity_reductions_collection[run] = all_properties['milestone_properties']['complexity_reduction']
     awareness_list_collection[run] = all_properties['milestone_properties']['awareness']
     orthogonality_list_collection[run] = all_properties['milestone_properties']['orthogonality']
@@ -236,6 +241,8 @@ plt.show()
 
 exit()
 
+
+
 # PLOTTING HIDDEN LAYER TSNE PLOTS, WITH SELECTED ACTION VALUES
 
 selected_action_tsne_class_clusters = agent_properties.return_properties(agent_model_state_dicts, tsne_colors='actions')['milestone_tsne_class_clusters']
@@ -255,6 +262,8 @@ for i, ax in enumerate(axs):
         
         
 plt.show()
+
+
 
 
 # PLOT TSNE FOR BEST MODEL
