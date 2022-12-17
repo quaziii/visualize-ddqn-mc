@@ -34,13 +34,15 @@ class MeasureProperties:
 
         pass
 
-    def initialize_data(self, agent):
+    def set_agent(self, agent):
+        self.agent = agent
+        self.initialize_data(agent)
+
+    def populate_transitions(self):
         # populate transitions list
 
-        self.__init__(self.n, self.representation_size, self.env)
         # env = gym.make('gym_mc:mc-v0')
-        state = self.env.eval_reset()
-        # state = self.env.reset()
+        state = self.env.reset()
         # state is an np array
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -53,9 +55,10 @@ class MeasureProperties:
 
 
         # run random policy for n episodes
-        for _ in range(self.n):
+        # for _ in range(self.n):
+        for _ in range(10):
             done = False
-            # state = self.env.reset() # FORGOT TO RESET ENV, THIS WAS A BUG IN PROPERTIES CODE, CHECK LATER
+            state = self.env.reset()
             while not done:
 
                 action = self.env.action_space.sample()
@@ -70,6 +73,45 @@ class MeasureProperties:
 
         self.transitions = random.sample(self.transitions, self.n)
 
+    def initialize_data(self, agent):
+        # # populate transitions list
+
+        # self.__init__(self.n, self.representation_size, self.env)
+        # # env = gym.make('gym_mc:mc-v0')
+        # state = self.env.eval_reset()
+        # # state = self.env.reset()
+        # # state is an np array
+
+        # self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        # if torch.backends.mps.is_available():
+        #     self.device = "mps"
+        #     self.device = "cpu"
+
+        
+
+
+        # # run random policy for n episodes
+        # # for _ in range(self.n):
+        # for _ in range(10):
+        #     done = False
+        #     state = self.env.random_reset() # FORGOT TO RESET ENV, THIS WAS A BUG IN PROPERTIES CODE, CHECK LATER
+        #     while not done:
+
+        #         action = self.env.action_space.sample()
+
+        #         next_state, reward, done, info = self.env.step(action)
+        #         transition = Transition(state, action, next_state, reward)
+        #         state = next_state
+        #         self.transitions.append(transition)
+
+        
+        # # randomly sample n transitions
+
+        # self.transitions = random.sample(self.transitions, self.n)
+
+
+
 
 
 
@@ -77,9 +119,9 @@ class MeasureProperties:
 
             state = torch.FloatTensor(np.array(transition.state)).to(self.device)
             next_state = torch.FloatTensor(np.array(transition.next_state)).to(self.device)
-            self.phis[i] = agent.target_model.get_representation(state).detach()
-            self.phis_next[i] = agent.target_model.get_representation(next_state).detach()
-            self.qs[i] = agent.target_model.forward(state).detach()
+            self.phis[i] = agent.model.get_representation(state).detach()
+            self.phis_next[i] = agent.model.get_representation(next_state).detach()
+            self.qs[i] = agent.model.forward(state).detach()
             # self.states[i] = transition.state
 
         # self.states = np.array(self.states)
@@ -89,6 +131,26 @@ class MeasureProperties:
         print('LENNN ', len(self.transitions))
 
 
+        pass
+
+
+    def states_scatter_plot(self):
+        # plot states in 2d space
+
+        states = []
+        for transition in self.transitions:
+            states.append(transition.state)
+
+        states = np.array(states)
+
+        # print(states)
+        
+        plt.scatter(states[:, 0], states[:, 1], alpha=0.1)
+        plt.title('State space scatter plot')
+        plt.xlim(self.env.min_position, self.env.max_position)
+        plt.ylim(-self.env.max_speed, self.env.max_speed )
+        plt.show()
+        
         pass
 
     def get_L_rep(self):
@@ -441,7 +503,7 @@ class AgentPropertiesWrapper:
         self.n = n
 
         pass
-    def return_properties(self, agent_model_state_dicts, tsne_colors='actions'):
+    def return_properties(self, agent_model_state_dicts, tsne_colors='actions', skip_tsne=False, skip_properties=False):
         '''
         Calculate properties and representation stuff and return everything for each model state dictionary in agent_model_state_dicts
         '''
@@ -474,8 +536,14 @@ class AgentPropertiesWrapper:
         properties = MeasureProperties(self.n, dummy_agent.model.representation_size, self.env)
         visualize_rep = VisualizeRepresentation(dummy_agent, self.env)
 
+        # CHECK IF STATES GENERATED COVER STATE SPACE IN MEASURED PROPERTIES, USING DUMMY AGENT IS FINE SINCE AGENT ISNT USED.
+
+        
+
         decision_boundary_classes_shape = visualize_rep.return_decision_boundary()[2].shape
         tsne_classes_shape = visualize_rep.return_tsne_class_clusters(tsne_colors)['tsne_z'].shape
+
+        
 
 
         # used to plot decision boundaries of model for each milestone
@@ -493,21 +561,35 @@ class AgentPropertiesWrapper:
             'class2': np.empty((n_milestones, *tsne_classes_shape)),
         }
 
+
+        if not skip_properties:
+
+            # use the same MeasureProperties for all agnets
+            properties = MeasureProperties(self.n, dummy_agent.model.representation_size, self.env)
+
+
+            properties.populate_transitions()
         for i, agent_model_state_dict in enumerate(agent_model_state_dicts):
+
             agent = DQNAgent(self.env, gamma=self.gamma, tau=self.tau, learning_rate=self.learning_rate)
             agent.model.load_state_dict(agent_model_state_dict)
 
-            # initialize classes for this particular agent config
-            properties = MeasureProperties(self.n, agent.model.representation_size, self.env)
             visualize_rep = VisualizeRepresentation(agent, self.env)
 
-            # store properties
-            properties.initialize_data(agent)
-            milestone_properties['l_rep'].append(properties.get_L_rep())
-            milestone_properties['awareness'].append(properties.awareness())
-            milestone_properties['orthogonality'].append(properties.orthogonality())
-            milestone_properties['sparsity'].append(properties.sparsity())
-            milestone_properties['diversity'].append(properties.diversity())
+            
+
+            if not skip_properties:
+                # store properties
+            
+
+                # print('SCATTERING PLOT')
+                # properties.states_scatter_plot()
+                properties.initialize_data(agent)
+                milestone_properties['l_rep'].append(properties.get_L_rep())
+                milestone_properties['awareness'].append(properties.awareness())
+                milestone_properties['orthogonality'].append(properties.orthogonality())
+                milestone_properties['sparsity'].append(properties.sparsity())
+                milestone_properties['diversity'].append(properties.diversity())
 
             # store heatmap
             milestone_heatmaps[i] = agent.model.representation_layer[2].weight.detach().numpy()
@@ -515,25 +597,28 @@ class AgentPropertiesWrapper:
             # store decision boundaries
             milestone_decision_boundaries['state_x'][i], milestone_decision_boundaries['state_y'][i], milestone_decision_boundaries['class'][i] = visualize_rep.return_decision_boundary()
 
-            # store tsne plots of hidden layers 
-            
-            
-            tsne_class_clusters = visualize_rep.return_tsne_class_clusters(tsne_colors)
 
-            milestone_tsne_class_clusters['tsne_x'][i], milestone_tsne_class_clusters['tsne_y'][i], milestone_tsne_class_clusters['class'][i] = tsne_class_clusters['tsne_x'], tsne_class_clusters['tsne_y'], tsne_class_clusters['tsne_z']
+            if not skip_tsne:
+                # store tsne plots of hidden layers 
+                
+                tsne_class_clusters = visualize_rep.return_tsne_class_clusters(tsne_colors)
 
-            milestone_tsne_class_clusters['class2'][i] = tsne_class_clusters['tsne_z2']
+                milestone_tsne_class_clusters['tsne_x'][i], milestone_tsne_class_clusters['tsne_y'][i], milestone_tsne_class_clusters['class'][i] = tsne_class_clusters['tsne_x'], tsne_class_clusters['tsne_y'], tsne_class_clusters['tsne_z']
+
+                milestone_tsne_class_clusters['class2'][i] = tsne_class_clusters['tsne_z2']
 
             # store reward
             # LATER IF NEEDED
         
         # compute complexity reductions
-        milestone_properties['complexity_reduction'] = MeasureProperties.complexity_reduction(milestone_properties['l_rep'])
 
-        # convert milestone lists to np arrays
+        if not skip_properties:
+            milestone_properties['complexity_reduction'] = MeasureProperties.complexity_reduction(milestone_properties['l_rep'])
 
-        for item in milestone_properties:
-            milestone_properties[item] = np.array(milestone_properties[item])
+            # convert milestone lists to np arrays
+
+            for item in milestone_properties:
+                milestone_properties[item] = np.array(milestone_properties[item])
         
         # return milestone_properties, milestone_heatmaps, milestone_decision_boundaries, milestone_tsne_class_clusters
 
